@@ -1,0 +1,113 @@
+id: "stock_watson_2018_lpiv"
+citation:
+  authors: "Stock, Watson"
+  year: 2018
+  title: "Identification and Estimation of Dynamic Causal Effects in Macroeconomics Using External Instruments"
+  journal: "Economic Journal"
+  volume: "128"
+  pages: "917-948"
+
+research_questions:
+  - "causal effects using external instruments"
+  - "proxy SVAR identification"
+  - "LP-IV for macroeconomic shocks"
+  - "instrumental variables for impulse responses"
+tags:
+  - local_projections
+  - instrumental_variables
+  - proxy_svar
+  - causal_inference
+  - identification
+
+model:
+  class: "lp"
+  prior: null
+  # SW 2018 (the Sargan Lecture) unifies external-instrument identification
+  # across TWO estimators: one-step LP-IV (§1) and two-step SVAR-IV / proxy
+  # SVAR (§2). Its central result is their EQUIVALENCE under invertibility
+  # (Theorem 1, p. 936): when lagged Y's are needed as controls the validity
+  # conditions for LP-IV and SVAR-IV coincide ("no free lunch"), so comparing
+  # the two estimates is a TEST of invertibility (§3). The entry id says
+  # "lpiv", but the paper gives equal billing to SVAR-IV.
+  method_summary: "external-instrument identification via both LP-IV (one-step) and SVAR-IV/proxy-SVAR (two-step); equivalence under invertibility (Thm 1, p. 936); the LP-IV-vs-SVAR-IV gap is a test of invertibility (§3)"
+  variables:
+    endogenous:
+      - {name: "varies", role: "method is general"}
+    exogenous:
+      - {name: "external instrument", role: "proxy for the structural shock of interest"}
+  lags: "included as controls (paper's illustration: LP-IV with 4 lags of (Y,Z); SVAR-IV with 12 lags)"
+  frequency: "varies"
+  empirical_illustration: >
+    SW's single worked illustration (§4, p. 940-942) is Gertler-Karadi (2015)
+    monetary policy: Y = (1-year Treasury rate, 100*dlog industrial production,
+    100*dlog CPI, Gilchrist-Zakrajsek excess bond premium); instrument Z =
+    Fed Funds futures (FFF) surprises around FOMC dates; monthly 1990m1-2012m6.
+    The naive no-control LP-IV is WEAK (first-stage F=1.7); adding 4 lags of
+    (Y,Z) restores relevance and validity (F=23.7).
+
+identification:
+  method: "external_instrument"
+  requirements:
+    relevance: >
+      instrument correlated with the shock of interest. SW 2018 (§1.5.5,
+      p. 939) recommend weak-IV-ROBUST inference (Montiel Olea-Pflueger 2013,
+      Kleibergen 2005, Andrews 2018); the usual first-stage F (and the F>10
+      rule of thumb) is valid only under homoskedasticity + invertibility +
+      serially-uncorrelated Z, so treat it as a guide, not the paper's rule.
+    exogeneity: >
+      the paper's Condition LP-IV (pp. 924-925) has three parts:
+      (i) relevance for the target shock eps_1t; (ii) contemporaneous
+      exogeneity, E[eps_{2:n,t} Z_t'] = 0; and (iii) LEAD-LAG exogeneity,
+      E[eps_{t+j} Z_t'] = 0 for ALL j != 0, including future shocks and
+      past/future realizations of the target shock itself. With controls,
+      use the residualized conditions LP-IV-perp, not an unconditional
+      substitute. The GK instrument mixes current and previous-month
+      surprises, so lagged-instrument controls have an identification
+      role, not just a precision role (pp. 941-942).
+  examples:
+    monetary_policy: "Gertler-Karadi (2015) high-frequency Fed-funds-futures surprises (the paper's OWN illustration); Romer-Romer (2004) narrative shocks"
+    fiscal_policy: "Romer-Romer (2010) narrative tax measure (the foregrounded fiscal instrument); Mertens-Ravn (2013) tax (a SVAR-IV application); Ramey (2011) defence-spending news"
+    oil: "Hamilton (2003) / Kilian (2008) oil-supply disruptions"
+  rationale: >
+    External instruments provide identification without recursive ordering or
+    sign restrictions. The instrument proxies for the structural shock; either
+    LP-IV (one-step) or SVAR-IV/proxy-SVAR (two-step) uses it. SW 2018's
+    contribution is unifying the two and showing they coincide under
+    invertibility (Theorem 1, p. 936).
+
+expected_results:
+  vs_cholesky: "may differ if recursive ordering is wrong"
+  vs_sign_restrictions: "point-identified (not set-identified); tighter bands"
+  weak_instrument: "report instrument strength and use weak-IV-robust inference (SW 2018 §1.5.5); the F>10 rule is only a guide. In the paper's own illustration the naive LP-IV is weak (F=1.7) and lag controls fix it (F=23.7)"
+  notes: >
+    The critical practical issue is instrument quality. A weak instrument
+    produces unreliable results regardless of the estimation method. Report
+    instrument strength and prefer weak-IV-robust inference over the bare F.
+
+recommend_when:
+  - "a credible external instrument is available"
+  - "user wants robust impulse responses without VAR dynamics"
+  - "Cholesky ordering is controversial"
+  - "user wants to combine IV identification with LP flexibility"
+not_recommended_when:
+  - "no external instrument available"
+  - "instrument is likely weak (F < 10)"
+  - "user needs system-level results (FEVD, historical decomposition)"
+alternative_approaches:
+  - {id: "jorda_2005_lp", reason: "LP without IV; uses recursive identification"}
+  - {id: "cee_1999_monetary_svar", reason: "VAR with recursive identification"}
+
+implementation_notes:
+  replication: "scripts/replications/stock_watson_2018_lpiv/"
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-03"
+  against: "original paper (Stock & Watson 2018, Economic Journal 128(610), 917-948)"
+  pdf_location: "papers/stock_watson_2018_lpiv.pdf"
+  notes: >
+    The replication is a method demo that substitutes the Jarociński-Karadi
+    (2020) HF instrument and extends the sample to about 2024; it does not
+    reproduce the paper's GK/FFF 1990-2012 numbers (see the replication
+    README).
+

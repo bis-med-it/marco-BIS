@@ -1,0 +1,174 @@
+id: "bbe_2005_favar"
+citation:
+  authors: "Bernanke, Boivin, Eliasz"
+  year: 2005
+  title: "Measuring the Effects of Monetary Policy: A Factor-Augmented Vector Autoregressive (FAVAR) Approach"
+  journal: "Quarterly Journal of Economics"
+  volume: "120"
+  issue: "1"
+  pages: "387-422"
+
+research_questions:
+  - "effect of monetary policy on many variables simultaneously"
+  - "monetary policy transmission with a data-rich environment"
+  - "resolving the price puzzle without ad hoc controls"
+  - "incorporating central-bank-style information sets into a VAR"
+  - "impulse responses for variables not in a small VAR"
+tags:
+  - monetary_policy
+  - favar
+  - factor_models
+  - data_rich
+  - us_macro
+  - dimension_reduction
+  - structural_identification
+  - cholesky
+  - canonical
+
+model:
+  class: "favar"
+  prior: null                      # baseline two-step is classical PC + VAR; paper also runs a one-step Bayesian variant
+  variables:
+    # FAVAR splits variables into a large information panel X_t and a small observed block Y_t.
+    # The state vector in the VAR is [F_t', Y_t']', where F_t are K latent factors extracted from X_t.
+    observed_factors:              # Y_t in the paper's notation: policy instrument(s) entering the VAR directly
+      - {name: "Federal funds rate", proxy: "FEDFUNDS (FRED)", transform: "level", role: "policy instrument"}
+    latent_factors:
+      count: 3                     # K = 3 headline (Fig. II); K = 5 robustness (Fig. III, pp. 408-409); fn 21's "up to seven" refers to the VAR-plus-factors variant, not a K = 7 FAVAR
+      extraction: "principal components on standardised X_t"
+      slow_fast_partition:
+        slow_block: "exactly 70 series (Appendix 1 asterisks): real output/income, employment/hours, consumption, price indices, average hourly earnings, assumed not to react within month to policy"
+        fast_block: "the other 50 series: money/credit, interest rates and spreads, exchange rates, stock prices, PLUS non-financial fast movers: housing starts/sales, NAPM orders/inventories/deliveries, NAPM commodity prices, consumer expectations"
+        purpose: >
+          The slow/fast split is a classification of the X_t SERIES (not of
+          factors in the VAR). It is used (a) to build slow-block principal
+          components for the rotation regression and (b) to let fast series
+          respond contemporaneously to policy through their loadings on R_t
+          in the observation equation.
+    information_panel_X:
+      count: 120                   # "a balanced panel of 120 monthly macroeconomic time series" (p. 403)
+      composition: >
+        Broad cross-section of US macro/financial monthly indicators: output, employment,
+        consumption, housing, inventories, orders, prices, wages, money, credit, interest
+        rates, spreads, exchange rates, stock prices. Updates of the
+        Stock-Watson (1998, 1999) series, taken from the DRI/McGraw-Hill
+        Basic Economics Database (pp. 403, 416). FRED-MD is this repo's
+        substitution, not the paper's source. Each series is transformed to
+        stationarity (logs, log-differences, or levels per the Appendix 1
+        transform code) and standardised before PC extraction.
+    exogenous: []
+  lags: 13
+  frequency: "monthly"
+
+identification:
+  method: "cholesky"
+  ordering:
+    - "latent factors F_1 .. F_K (rotated)"
+    - "Federal funds rate (ordered last)"
+  rationale: >
+    ALL K factors are ordered before the policy rate: "a recursive
+    structure where all the factors entering (1) respond with a lag to
+    change in the monetary policy instrument, ordered last in Y_t"
+    (p. 401); "a VAR in F-hat_t and Y_t is estimated and identified
+    recursively, with R_t ordered last" (p. 405). There is NO fast-factor
+    block after the FFR in the VAR; fast-moving X-series respond
+    contemporaneously through their loadings on R_t in the observation
+    equation instead. The rotation does NOT orthogonalise the factors
+    against the FFR: footnote 20 says plain-regression residuals "would
+    not be appropriate" because the other factors are correlated with
+    R_t; only the direct contemporaneous dependence is removed.
+  algorithm: >
+    Step 1: extract K + M principal components C-hat(F, Y) from the full
+            panel X_t (p. 398; M = 1 here, the FFR).
+    Step 2: extract principal components C-hat*(F) from the slow-block
+            series only (not affected within month by policy, p. 405).
+    Step 3: multiple regression C-hat = b_C* C-hat*(F) + b_R R_t + e;
+            set F-hat_t = C-hat - b-hat_R R_t (removes only the direct
+            R_t dependence; F-hat is NOT orthogonal to R_t).
+    Step 4: estimate a recursive VAR on [F-hat_t', R_t']' with R_t
+            ordered last; standard Cholesky identification.
+  normalisation: >
+    Monetary shock standardised to a 25-basis-point innovation in the
+    FFR; published figures report responses in standard-deviation units
+    of the transformed series (p. 405).
+
+estimation:
+  approach: "two_step_principal_components"
+  alternative: "single_step_bayesian_likelihood (Gibbs over factors and VAR parameters)"
+  notes: >
+    The two-step approach is simpler and produces the paper's headline
+    figures (Figures I-II). Standard errors should account for
+    generated-regressor uncertainty; the paper uses a Kilian (1998)
+    bootstrap "that accounts for the uncertainty in the factor
+    estimation" (pp. 399, 407), at 90% confidence. The paper does NOT
+    rank the two approaches: "it is not clear a priori that one should
+    be favored over the other" (p. 398); the joint likelihood approach
+    "suffers from the additional structure it imposes" (p. 412) and the
+    conclusion finds the two-step "tends to produce more plausible
+    responses" (p. 415). Gibbs variant: 10,000 draws, 2,000 burn-in
+    (pp. 410-411); prior details only in the NBER WP appendix.
+
+sample:
+  start: "1959M1"
+  end: "2001M8"
+  notes: "monthly US data; pre-ZLB"
+
+expected_results:
+  monetary_contraction:
+    output_measures: "industrial production, employment, consumption all decline; trough at 12-24 months"
+    prices: "price puzzle considerably reduced, not eliminated: \"still a small positive response of prices in the first year\" (pp. 405-406); CPI declines thereafter"
+    money: "M1, M2 decline (liquidity effect)"
+    interest_rates: "FFR rises on impact; longer rates rise less, term spread narrows"
+    exchange_rate: "dollar appreciates on impact"
+    housing: "housing starts decline"
+  notes: >
+    The key contribution is twofold. First, the price puzzle is
+    SUBSTANTIALLY REDUCED without adding commodity prices ad hoc; the
+    factors absorb the missing information (a small positive price
+    response remains in year 1; the conclusion claims only "some
+    support" for the information story, p. 415). Second, IRFs are
+    available for ALL 120 series in X_t via the observation equation.
+    Quantitative anchors (Table I, p. 414): the policy shock explains
+    a modest share of 60-month forecast-error variance outside interest
+    rates (unemployment 0.103, capacity utilisation 0.100, IP 0.054,
+    CPI 0.038; FFR itself 0.454); common-component R-squared is high for
+    CPI (0.870), unemployment (0.817), IP (0.707) but low for the
+    monetary base (0.104) and M2 (0.052), and the paper warns the money
+    IRFs are correspondingly less reliable.
+
+recommend_when:
+  - "user wants to study monetary transmission across many variables at once"
+  - "small-VAR results show a price puzzle and user wants a richer information set rather than ad hoc controls"
+  - "user has access to a large monthly macro panel (e.g., FRED-MD)"
+  - "user wants impulse responses for variables not naturally fit in a small VAR (housing, sectoral output, spreads)"
+  - "policymaker-style analysis where the central bank is assumed to react to a large information set"
+not_recommended_when:
+  - "small information set is available (factors poorly estimated below ~50 series)"
+  - "structural shock identification beyond recursive ordering is required (sign restrictions on factors are not straightforward)"
+  - "factors lack a clear economic interpretation that the user needs (consider DSGE-VAR or named-factor approaches instead)"
+  - "very short samples (factor estimation needs both T and N large)"
+  - "user wants a single, point-identified shock without dimensionality concerns (use CEE 1999 SVAR)"
+alternative_approaches:
+  - {id: "cee_1999_monetary_svar", reason: "smaller, point-identified SVAR with explicit commodity-price control for the price puzzle"}
+  - {id: "bgr_2010_large_bvar", reason: "alternative way to use many variables: shrinkage instead of factor reduction"}
+  - {id: "sims_1980_var", reason: "baseline small VAR to demonstrate the omitted-information problem FAVAR addresses"}
+
+implementation_notes:
+  replication: "scripts/replications/bbe_2005_favar/"
+  data_alignment_with_repo: >
+    FRED-MD (data/fred_md/, 126 monthly series, 1959M1-) is a natural fit for X_t.
+    Use data/fred_md/transform_codes.csv for per-series stationarity transforms.
+    Federal funds rate (FEDFUNDS) is the standard Y_t.
+  number_of_factors: >
+    K = 3 is the paper's headline; K = 5 its robustness check. Note the
+    paper explicitly declines formal criteria for this choice: Bai-Ng
+    "does not necessarily address the question of how many factors
+    should be included in the VAR. Instead, we explore the sensitivity"
+    (p. 407). Bai-Ng (2002) or out-of-sample forecasting remain sensible
+    repo advice for NEW applications, but are not the paper's procedure.
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-10"
+  against: "QJE 120(1) published PDF, field-by-field (Gibbs priors verifiable only in the NBER WP appendix, not checked)"
+  pdf_location: "papers/bbe_2005_favar.pdf"

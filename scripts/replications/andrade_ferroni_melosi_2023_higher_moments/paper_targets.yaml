@@ -1,0 +1,84 @@
+# Paper-target validation for Andrade-Ferroni-Melosi (2023) replication.
+#
+# AFM 2023 combine sign restrictions with OWN-SHOCK higher-moment
+# threshold inequalities to sharpen IRF identification. The paper's
+# sharpening claims are QUALITATIVE ("significantly sharpens
+# identification"; output's positive responses "chopped away"; prices
+# about half the sign-only response, p. 30); the paper gives no
+# percentage figure. Its applications use the Uhlig 2005 dataset
+# (US MP shock, robust kurtosis > 1.2) and an 8-var EA system; our
+# replication uses OLS + asymptotic on a different 4-var FRED-MD
+# sample with BAA-FFM as a financial-conditions stand-in.
+#
+# RESULT IN THIS SAMPLE: bands WIDEN by ~12% (avg) rather than
+# tighten. The experiment does not isolate why. The paper's setting
+# differs in several candidate ways: ROBUST percentile moment
+# estimators (eq. 1), Petrova-style robust Bayes with flat priors,
+# restriction horizon impact+6m, and a threshold calibrated from an
+# external proxy menu. Documented in README §"Interpretation and
+# limitations".
+
+targets:
+  - description: "Sample size (4-var monthly 1965-2007 ⇒ 516 obs pre-ZLB)"
+    location: "config.yaml: pre-ZLB to keep FFR informative (the paper's US application is 1965m1-2003m12, p. 27; 468 months by our count, the paper states no observation count)"
+    paper_value: 516.0
+    paper_units: "count"
+    our_key: "n_obs"
+    tolerance: 6.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of variables (4-var: ip, cpi, ffr, spread)"
+    location: "config.yaml (the paper's US application is also 4-variable, using the Uhlig 2005 dataset of y, deflator, pcom and FFR; its EA application is 8-variable)"
+    paper_value: 4.0
+    paper_units: "count"
+    our_key: "n_vars"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "VAR(12) lag order"
+    location: "config.yaml; matches the paper's US application (12 lags, p. 27; the EA application uses 6)"
+    paper_value: 12.0
+    paper_units: "count"
+    our_key: "n_lags"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Max |eigenvalue| (near unit root with log-level data)"
+    location: "Our stability diagnostic (log-level VAR); not a paper value"
+    paper_value: 1.0
+    paper_units: "modulus"
+    our_key: "max_eig_modulus"
+    tolerance: 0.05
+    tolerance_kind: "absolute"
+
+  - description: "Sign-only acceptance rate (pass 1, baseline)"
+    location: "Replication pin under the fixed-column acceptance measure: ~0.5% on this setup"
+    paper_value: 0.005
+    paper_units: "rate"
+    our_key: "pass1_acceptance_rate"
+    tolerance: 0.004
+    tolerance_kind: "absolute"
+
+  - description: "Higher-moment filter has BITE (rejects most sign-passing rotations)"
+    location: "Replication check: n_rejected_by_higher_moment > 1000 ⇒ filter is non-trivial"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "hm_filter_active"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "RESULT IN THIS SAMPLE: bands WIDEN (avg ratio HM/sign > 1)"
+    location: "README §'Interpretation and limitations'"
+    paper_value: 1.12
+    paper_units: "ratio (HM bands / sign-only bands)"
+    our_key: "avg_band_ratio_hm_vs_sign"
+    tolerance: 0.20
+    tolerance_kind: "absolute"
+
+  - description: "Both passes accept the target 500 rotations"
+    location: "config.yaml: target_accepted = 500"
+    paper_value: 1.0
+    paper_units: "indicator (both passes hit 500)"
+    our_key: "both_passes_hit_target"
+    tolerance: 0.0
+    tolerance_kind: "absolute"

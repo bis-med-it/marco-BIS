@@ -1,0 +1,32 @@
+# Replication config for Hamilton (2018) filter applied to US real GDP.
+# Compares HP and Hamilton output gaps; mirrors the spirit of the paper's
+# argument that the HP filter introduces spurious dynamics.
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/hamilton_2018_filter.yaml
+
+replication:
+  id: "hamilton_2018_filter"
+  title: "Hamilton (2018) Filter: US Real GDP"
+  subtitle: "Comparing HP and Hamilton output gaps on log real GDP"
+
+# --- Data ---
+data:
+  source: "fred_qd"
+  file: "data/fred_qd/dataset.csv"
+  sample_start: "1947-01-01"   # FRED-QD starts 1959Q1, so the effective sample is 1959Q1 onward
+  sample_end: "2024-12-31"
+  series:
+    code: "GDPC1"
+    transform: "log_x_100"   # log of GDP times 100 (so 1 percentage point = 1.0)
+
+# --- Filters ---
+filters:
+  - {method: "hp",       lam: 1600}
+  - {method: "hamilton", h: 8, p: 4}
+  - {method: "bn",       ar_order: null, max_ar_order: 12, ic: "bic"}
+  - {method: "kmw_bn",   ar_order: 12, delta: 0.25}   # KMW delta-bar (paper: 0.24 by automatic selection)
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

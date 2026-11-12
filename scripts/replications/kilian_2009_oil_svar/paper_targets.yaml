@@ -1,0 +1,48 @@
+# Paper-target validation for Kilian (2009), AER 99(3).
+#
+# Targets 1-2 are Kilian's Fig. 3 values, obtained from the author's replication
+# files (deposited in the JCR-Econ 2025 replication). Our recursive SVAR matches all
+# nine Fig. 3 responses to ~2e-12, so these headline numbers pin the run.
+# Targets 3-4 are specification facts from the paper (Sec. II.A, eq. (1),
+# p. 1058); target 5 is our own diagnostic, not a paper value.
+
+targets:
+  - description: "Oil-specific (precautionary) demand shock -> real oil price, IMPACT response"
+    location: "Kilian (2009) Fig. 3, p. 1061, bottom-right cell (values from the author's replication files)"
+    paper_value: 5.94
+    paper_units: "percent"
+    our_key: "oil_specific_rpo_impact"
+    tolerance: 0.5
+    tolerance_kind: "absolute"
+
+  - description: "Oil-specific demand shock -> real oil price, PEAK response (~2 months)"
+    location: "Kilian (2009) Fig. 3, p. 1061, bottom-right cell (values from the author's replication files)"
+    paper_value: 8.55
+    paper_units: "percent"
+    our_key: "oil_specific_rpo_peak"
+    tolerance: 0.6
+    tolerance_kind: "absolute"
+
+  - description: "Number of endogenous variables (3-variable global oil-market VAR)"
+    location: "Kilian (2009) Sec. II.A, eq. (1), p. 1058"
+    paper_value: 3.0
+    paper_units: "count"
+    our_key: "n_vars"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "VAR lag order (24 monthly lags)"
+    location: "Kilian (2009) Sec. II.A, eq. (1), p. 1058"
+    paper_value: 24.0
+    paper_units: "count"
+    our_key: "n_lags"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Max |eigenvalue| regression check (near unit root expected for a level oil-price system; the band admits mildly explosive roots, so this is not a stability test)"
+    location: "Own eigenvalue diagnostic, not a paper value (the paper reports no eigenvalues)"
+    paper_value: 0.99
+    paper_units: "modulus"
+    our_key: "max_eig_modulus"
+    tolerance: 0.05
+    tolerance_kind: "absolute"

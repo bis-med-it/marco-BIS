@@ -1,0 +1,69 @@
+# Replication config for Jordà (2005) "Estimation and Inference of Impulse
+# Responses by Local Projections" (AER).
+#
+# Demonstrates LP-vs-VAR IRF comparison on a CEE-style four-variable
+# monetary specification. The structural monetary policy shock is identified
+# recursively via the Cholesky decomposition of the VAR residual covariance,
+# then used as the shock series for LP estimation.
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/jorda_2005_lp.yaml
+
+replication:
+  id: "jorda_2005_lp"
+  title: "Jordà (2005) Local Projections"
+  subtitle: "LP-vs-VAR IRF comparison on a four-variable monetary VAR"
+
+# --- Data --- (CEE-style without reserves, for a compact demonstration)
+data:
+  source: "fred_qd"
+  sample_start: "1965-01-01"
+  sample_end: "2019-12-31"
+
+  series:
+    - {name: "rgdp",      fred_code: "GDPC1"}
+    - {name: "deflator",  fred_code: "GDPCTPI"}
+    - {name: "commodity", fred_code: "PPIACO"}
+    - {name: "ffr",       fred_code: "FEDFUNDS"}
+
+  transforms:
+    rgdp:      "log"
+    deflator:  "log"
+    commodity: "log"
+    ffr:       "level"
+
+  variable_order: ["rgdp", "deflator", "commodity", "ffr"]
+
+# --- Model ---
+model:
+  class: "lp"
+  lags: 4                # lag length (matched between VAR and LP)
+  horizon: 20            # 0..20 quarters
+  shock_var: "ffr"       # monetary policy shock = FFR-equation residual under
+                         # Cholesky ordering with FFR last
+  trend: "c"             # constant only
+
+# --- IRF uncertainty ---
+inference:
+  var_bands: "asymptotic_mc"   # closed-form asymptotic + Monte Carlo for bands
+  n_draws: 2000                # VAR posterior/MC draws
+  hac_lag_rule: "horizon_plus_one"  # LP Newey-West truncation rule
+  credible_intervals: [0.68, 0.90]
+
+# --- Out-of-sample forecast comparison ---
+# VAR's iterated forecasts vs LP's direct multi-step regressions at the
+# same set of rolling origins. Jordà's claim: LP forecasts can match VAR
+# forecasts at short horizons and may diverge under misspecification;
+# with a well-specified VAR(4) on this 4-variable monetary system the
+# two should be similar.
+forecast_evaluation:
+  window_size: 80            # 20 years quarterly
+  horizon: 12                # 1-12 quarters ahead
+  step: 1                    # consecutive quarterly origins; the DM
+                             # truncation/HLN correction assumes origin
+                             # spacing equals the loss array's period
+  horizons_to_report: [1, 4, 8, 12]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

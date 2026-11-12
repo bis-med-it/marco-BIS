@@ -1,0 +1,63 @@
+# Paper-target validation for Stock-Watson (2018) LP-IV replication.
+#
+# Targets are mostly results from an earlier run of this replication
+# (regression baselines, not numbers from the paper). They catch
+# regressions; they do not by themselves establish agreement with the
+# paper.
+
+targets:
+  - description: "First-stage F-statistic (Jarociński-Karadi MP shock instrument)"
+    location: "Regression baseline from an earlier run of this replication (LP-IV first stage), not a paper number; SW's own Gertler-Karadi illustration reports first-stage F_Hom 1.7-23.7 and F_HAC 1.1-19.2 (Table 1, p. 941) for a different instrument and sample, so not comparable. SW 2018 §1.5.5 covers instrument strength / weak-IV-robust inference (§3 is the invertibility test, not a strong-instrument condition)"
+    paper_value: 15.20
+    paper_units: "F-statistic"
+    our_key: "first_stage_F"
+    tolerance: 4.0
+    tolerance_kind: "absolute"
+
+  - description: "First-stage gamma (FFR loading on instrument)"
+    location: "Regression baseline from an earlier run of this replication (outputs/numerical_results.json), not a paper number; first stage of LP-IV on the contiguous merged sample (zero-surprise fill for excluded JK months)"
+    paper_value: 0.4348
+    paper_units: "OLS coefficient"
+    our_key: "first_stage_gamma"
+    tolerance: 0.10
+    tolerance_kind: "absolute"
+
+  - description: "First-stage F > 10 heuristic check"
+    location: "Framework check derived from first_stage_F; F > 10 rule of thumb (Stock-Yogo 2005), not a paper result"
+    paper_value: 1.0
+    paper_units: "indicator: 1 if F > 10, else 0"
+    our_key: "strong_instrument"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "FFR peak magnitude"
+    location: "Regression baseline from an earlier run of this replication (outputs/numerical_results.json; contiguous sample), not a paper number; long-horizon LP magnitudes are imprecise"
+    paper_value: 8.18
+    paper_units: "percentage points"
+    our_key: "ffr_peak"
+    tolerance: 1.0
+    tolerance_kind: "absolute"
+
+  - description: "FFR peak horizon (in months from impact)"
+    location: "Regression baseline from an earlier run of this replication (outputs/numerical_results.json; contiguous sample), not a paper number"
+    paper_value: 41.0
+    paper_units: "horizon (months)"
+    our_key: "ffr_peak_h"
+    tolerance: 6.0
+    tolerance_kind: "absolute"
+
+  - description: "Industrial production dominant response (signed peak by |magnitude|)"
+    location: "Regression baseline from an earlier run of this replication (outputs/numerical_results.json), not a paper number; IP is hump-shaped: trough at h=17 (-0.150) is the dominant peak, late positive peak at h=38 (+0.090). The extraction in replicate.py uses argmax(|path|) which returns the trough."
+    paper_value: -0.150
+    paper_units: "log-points (signed)"
+    our_key: "ip_peak"
+    tolerance: 0.030
+    tolerance_kind: "absolute"
+
+  - description: "CPI peak magnitude at h=38"
+    location: "Regression baseline from an earlier run of this replication (outputs/numerical_results.json; contiguous sample), not a paper number"
+    paper_value: 0.080
+    paper_units: "log-points"
+    our_key: "cpi_peak"
+    tolerance: 0.020
+    tolerance_kind: "absolute"

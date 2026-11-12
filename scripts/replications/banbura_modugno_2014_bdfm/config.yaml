@@ -1,0 +1,66 @@
+# Replication config for Bańbura-Modugno (2014) DFM (paper: EM-ML; here: Bayesian Gibbs demo).
+# Methodological demo using a 15-variable US FRED-MD subset.
+# The original paper applies the EM algorithm to a euro-area panel; this
+# replication uses the Bayesian Gibbs DFM (lib.fit_dfm_bayesian) on a US
+# panel as a demonstration of the same model class with NaN handling.
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/banbura_modugno_2014_bdfm.yaml
+
+replication:
+  id: "banbura_modugno_2014_bdfm"
+  title: "Bańbura-Modugno (2014) DFM with missing data: Bayesian Gibbs demo"
+  subtitle: "15-variable FRED-MD panel with simulated ragged-edge missing-data pattern"
+
+# --- Data ---
+data:
+  source: "fred_md"
+  file: "data/fred_md/dataset.csv"
+  sample_start: "1970-01-01"
+  sample_end: "2019-12-31"
+  # 15 US macro indicators across activity, prices, labour, money, rates
+  series:
+    - {name: "INDPRO",     fred_code: "INDPRO",       transform: "dlog_x_100"}
+    - {name: "PAYEMS",     fred_code: "PAYEMS",       transform: "dlog_x_100"}
+    - {name: "UNRATE",     fred_code: "UNRATE",       transform: "level"}
+    - {name: "DPCERA3",    fred_code: "DPCERA3M086SBEA", transform: "dlog_x_100"}
+    - {name: "RPI",        fred_code: "RPI",          transform: "dlog_x_100"}
+    - {name: "CPIAUCSL",   fred_code: "CPIAUCSL",     transform: "dlog_x_100"}
+    - {name: "CPIULFSL",   fred_code: "CPIULFSL",     transform: "dlog_x_100"}
+    - {name: "PPICMM",     fred_code: "PPICMM",       transform: "dlog_x_100"}
+    - {name: "FEDFUNDS",   fred_code: "FEDFUNDS",     transform: "level"}
+    - {name: "GS10",       fred_code: "GS10",         transform: "level"}
+    - {name: "M2SL",       fred_code: "M2SL",         transform: "dlog_x_100"}
+    - {name: "HOUST",      fred_code: "HOUST",        transform: "log"}
+    - {name: "SP500",      fred_code: "S&P 500",      transform: "dlog_x_100"}
+    - {name: "BAAFFM",     fred_code: "BAAFFM",       transform: "level"}
+    - {name: "AAAFFM",     fred_code: "AAAFFM",       transform: "level"}
+
+# --- Ragged-edge simulation ---
+# To demonstrate BM 2014's handling of arbitrary missing patterns, blank
+# out the last few months of some series. Mimics real-time release lags:
+# - PAYEMS / INDPRO: 1-month delay (last 1 month NaN)
+# - UNRATE: 1-month delay
+# - CPIAUCSL: 1-month delay
+# - All others: available through last period
+ragged_edge:
+  PAYEMS: 1
+  INDPRO: 1
+  UNRATE: 1
+  CPIAUCSL: 1
+
+# --- Model ---
+model:
+  class: "bayesian_dfm"
+  n_factors: 3            # BM 2014 typically uses 1-3 factors
+  standardize: true
+
+# --- Gibbs ---
+gibbs:
+  n_iter: 200
+  burn_in: 50
+  thin: 1
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

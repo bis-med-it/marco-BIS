@@ -1,0 +1,94 @@
+# Replication config for Bańbura-Giannone-Lenza (2015) "Conditional
+# Forecasts and Scenario Analysis with Vector Autoregressions for Large
+# Cross-Sections" (International Journal of Forecasting 31(3), 739-756).
+#
+# Demonstrates the BGL Kalman-smoother approach to conditional forecasts:
+# treat a future path of one or more variables as "observations" in a
+# VAR cast in companion-form state space, run the smoother, and the
+# smoothed mean of the unconstrained variables is the conditional
+# forecast.
+#
+# This replication uses a US CEE-style 7-variable quarterly BVAR rather
+# than the paper's 26-variable Euro-area panel (FRED-QD vs the paper's
+# ECB / Eurostat data). The methodology is variable-agnostic; what
+# matters is the conditioning machinery, not the specific variables.
+#
+# Three scenarios are demonstrated:
+#   1. Unconditional forecast (baseline)
+#   2. FFR pinned at 5% for 8 quarters ("higher for longer" policy path)
+#   3. FFR pinned at 0.25% for 8 quarters ("zero lower bound" counterfactual)
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/banbura_giannone_lenza_2015_conditional_forecasts.yaml
+
+replication:
+  id: "banbura_giannone_lenza_2015_conditional_forecasts"
+  title: "Bańbura-Giannone-Lenza (2015) Conditional Forecasts"
+  subtitle: "Scenario analysis via Kalman smoothing on a CEE-style BVAR"
+
+# --- Data --- US quarterly CEE-style spec (smaller than paper's EA panel
+# but methodology is identical)
+data:
+  source: "fred_qd"
+  sample_start: "1965-01-01"
+  sample_end: "2019-12-31"
+
+  series:
+    - {name: "rgdp",        fred_code: "GDPC1",      role: "output"}
+    - {name: "deflator",    fred_code: "GDPCTPI",    role: "prices"}
+    - {name: "commodity",   fred_code: "PPIACO",     role: "supply controls"}
+    - {name: "ffr",         fred_code: "FEDFUNDS",   role: "monetary policy"}
+    - {name: "nbreserves",  fred_code: "NONBORRES",  role: "reserves"}
+    - {name: "totreserves", fred_code: "TOTRESNS",   role: "reserves"}
+    - {name: "m1",          fred_code: "M1REAL",     role: "money (real)"}
+
+  transforms:
+    rgdp:        "log"
+    deflator:    "log"
+    commodity:   "log"
+    ffr:         "level"
+    # Level, not log: NONBORRES crosses zero in 2008 (borrowed reserves
+    # exceeded total during the crisis facilities), so its log is undefined.
+    nbreserves:  "level"
+    totreserves: "log"
+    m1:          "log"
+
+  variable_order:
+    ["rgdp", "deflator", "commodity", "ffr", "nbreserves", "totreserves", "m1"]
+
+# --- Model: Minnesota BVAR ---
+model:
+  class: "bvar"
+  lags: 5                            # paper: 5 lags for the BVAR in LEVELS (4 for the differences variant), p. 746
+  trend: "c"
+
+  prior:
+    # lambda_1/mu/delta are the paper's hyperprior MODES (the paper
+    # estimates them GLP-style); lambda_2 has no counterpart in the
+    # paper's conjugate prior (no-op in the lib's conjugate path).
+    lambda_1: 0.2
+    lambda_2: 0.5
+    lambda_3: 1.0
+    lambda_4: 100.0
+    mu: 1.0
+    delta: 1.0
+
+# --- Forecast configuration ---
+forecast:
+  horizon: 8                         # 2 years quarterly
+  n_paths: 1000                      # density forecast draws
+
+# --- Scenarios ---
+scenarios:
+  - name: "higher_for_longer"
+    description: "FFR held at 5.0% for 8 quarters"
+    conditioning:
+      ffr: [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]
+  - name: "zlb"
+    description: "FFR pinned at 0.25% (effective ZLB) for 8 quarters"
+    conditioning:
+      ffr: [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

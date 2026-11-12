@@ -1,0 +1,212 @@
+id: "romer_romer_2004_narrative_mp"
+citation:
+  authors: "Romer, Romer"
+  year: 2004
+  title: "A New Measure of Monetary Shocks: Derivation and Implications"
+  journal: "American Economic Review"
+  volume: "94"
+  issue: "4"
+  pages: "1055-1084"
+
+research_questions:
+  - "narrative-based identification of monetary policy shocks"
+  - "real effects of monetary policy purged of anticipation"
+  - "construction of an exogenous monetary policy shock series"
+  - "effects of Fed intentions on output and inflation"
+  - "purging Fed actions of endogenous response to forecasts"
+tags:
+  - monetary_policy
+  - narrative_identification
+  - fomc
+  - fed_intentions
+  - shock_series
+  - us_macro
+  - canonical
+  - identification
+  - foundational
+
+model:
+  class: "shock_series"          # the paper's deliverable is a shock series, used downstream in VAR / LP / regression
+  prior: null
+  frequency: "monthly (the published shock series; construction is at FOMC-meeting frequency)"
+  variables:
+    endogenous:
+      derived_shock_series:
+        - {name: "Romer-Romer monetary shock", description: "residual from a regression of FOMC-meeting intended FFR changes on Fed internal (Greenbook) forecasts"}
+      downstream_use_in_vars_or_lps:
+        # Typical application: small VAR or LP with RR shock as identified
+        - {name: "log industrial production", proxy: "INDPRO (FRED)", role: "output measure"}
+        - {name: "log CPI", proxy: "CPIAUCSL (FRED)", role: "price level"}
+        - {name: "unemployment rate", proxy: "UNRATE (FRED)", role: "labour market"}
+        - {name: "Romer-Romer shock", role: "identified monetary policy shock, included as exogenous in VAR or as instrument in LP"}
+    exogenous: []
+    note: >
+      The RR shock series is the deliverable of the paper. Subsequent
+      users (Coibion 2012 and many others)
+      use the series as:
+        (i) exogenous variable in a recursive VAR (slot it in like
+            an identified shock and read off impulse responses);
+        (ii) external instrument in a proxy-SVAR / LP-IV (a later
+             adaptation, following the Gertler-Karadi 2015 methodology;
+             Coibion 2012 uses single-equation regressions and a VAR with
+             cumulated shocks instead);
+        (iii) regressor in a single-equation local projection.
+
+construction_methodology:
+  approach: "two_step_narrative_plus_regression"
+  step_1_narrative_intention: >
+    For each FOMC meeting m, derive the INTENDED federal funds rate
+    from "quantitative and narrative records" (abstract): the Record of
+    Policy Actions (primary source), Minutes (through 3/1976),
+    Transcripts (from 2/1981) and the Bluebook, cross-checked against a
+    quantitative source: internal "expected federal funds rate" memos
+    based on the Weekly Report of the Manager of Open Market Operations
+    (pp. 1058-60). The deliverable is the change in the intended rate
+    around each meeting, not the realised FFR. (The Greenbook is the
+    FORECAST input to step 2, not an intentions source.)
+  step_2_purge_forecasts: >
+    Equation (1), pp. 1061-62: regress the intended change Dff_m on
+    FIVE regressor blocks:
+      Dff_m = c
+            + rho * ffb_m                          (level of the intended
+                                                    rate before meeting m,
+                                                    for mean reversion)
+            + sum_h lambda_h * y~_mh               (Greenbook real output
+                                                    growth forecasts)
+            + sum_h phi_h * (y~_mh - y~_{m-1,h})   (their REVISIONS since
+                                                    the previous meeting)
+            + sum_h beta_h * pi~_mh                (GNP/GDP deflator
+                                                    inflation forecasts)
+            + sum_h theta_h * (pi~_mh - pi~_{m-1,h})  (revisions)
+            + omega * u~_m0                        (contemporaneous
+                                                    unemployment forecast)
+            + epsilon_m
+    with horizons h = -1, 0, +1, +2 (previous quarter through two
+    quarters ahead, p. 1061). Estimated on N = 263 meetings,
+    1969:3-1996:12; R-squared = 0.28 (Table 1, p. 1063). The residual
+    epsilon_m IS the Romer-Romer shock. The regression is NOT intended
+    as a best-fit reaction function (p. 1062): only forecast-driven
+    policy is purged, leaving all other variation in the residual.
+  intuition: >
+    Standard identification confounds policy with response to
+    information. R&R's narrative isolates the part of policy actions
+    motivated by factors OTHER than the Fed's forecasts of output and
+    inflation (which would generate endogenous correlations).
+  frequency: >
+    Meeting frequency at construction (FOMC met at least monthly, often
+    twice, before 1979; ~8/year since; N = 263 over 1969-96, p. 1061).
+    Converted to monthly by three rules (pp. 1063-64): assign each shock
+    to its meeting month; SUM if two meetings fall in one month; record
+    ZERO (a true zero, not missing; fn 8) if no meeting.
+
+sample:
+  start: "1969M1"
+  end: "1996M12"
+  notes: >
+    The monthly series (Table 2) starts 1969:1 (Jan/Feb = 0); the
+    first-stage regression uses meetings 1969:3-1996:12 (Table 1); the
+    paper's outcome regressions run 1970:1-1996:12 with pre-1969:3
+    shocks set to zero (p. 1069). The 1996 endpoint is set by the
+    "substantial lag" with which Greenbook forecasts are released
+    (p. 1061).
+  extensions:
+    - "Coibion (2012, AEJ Macro): extended R&R shocks through 2002 using same methodology"
+    - "Wieland-Yang (2020, JMCB 'Financial Dampening'): updated RR shocks into the late 2000s"
+    - "Aruoba-Drechsel (2024, NBER WP 32417): text-augmented policy-shock identification using pre-meeting staff documents (Greenbooks/Tealbooks, Redbooks/Beigebooks)"
+
+usage_in_var_or_lp:
+  recursive_var: >
+    The paper's own convention (p. 1079): CUMULATE the shock first
+    ("Since standard VARs enter the federal funds rate in levels, we
+    cumulate our shock to produce a comparable series"), then estimate
+    a recursive VAR with the cumulated shock as the policy variable.
+    The paper's basic VAR is THREE variables {log IP, log PPI finished
+    goods, cumulated RR shock} with 36 lags (a CEE 1996 variant; adding
+    commodity prices makes 4). Footnote 27: a 12-lag version UNDERSTATES
+    the effects (output peak -1.5%). Results: output peak -2.9%, prices
+    -5.0% at 48 months, smaller than the single-equation estimates,
+    "presumably [because] a substantial part of the interest rate
+    movement is undone quickly" (p. 1079).
+  external_instrument: >
+    Use RR shock as instrument for the policy-rate residual in a
+    proxy-SVAR. Cleaner identification than ordering the shock last
+    because it allows the shock to affect multiple variables
+    contemporaneously through structural channels.
+  local_projection: >
+    Local projection (Jordà 2005) of the variable of interest on
+    current and lagged RR shocks + controls: an adaptation, not the
+    paper's own method. Direct impulse-response estimation without VAR
+    specification choices.
+
+expected_results:
+  monetary_contraction:
+    industrial_production: "single-equation (eq. 2, 1% shock): falls from month ~5, -4.3% flat over months 22-27 (95% CI at 22m: -7.0 to -1.4), back to -1.7% at month 48 (pp. 1056, 1069-71); the paper's own VAR gives a smaller -2.9% peak"
+    prices: >
+      baseline is the PPI FOR FINISHED GOODS, not CPI: virtually unchanged for
+      the first 22 months, then falls steadily to -5.9% at 48 months (CI -8.0
+      to -3.7) (pp. 1056, 1073); CPI ex shelter robustness: -3.6%; NO price
+      puzzle (max +0.3%, insignificant); the puzzle reappears with the actual
+      funds rate (p. 1075)
+  contrast_with_conventional_measures:
+    output: "LARGER BUT NOT FASTER (pp. 1080-81): max IP effect 2-3% vs ~1.5% (Sims 1992) and <1% (CEE 1996, Bernanke-Mihov 1998); output starts falling at 3-6 months in both"
+    prices: "much larger AND much faster: negative after 6-9 months vs ~18 months in the prior studies (p. 1080)"
+  notes: >
+    The paper's key claim is that conventional measures understate
+    monetary policy effects because policy actions are contaminated by
+    the Fed's response to its own forecasts (and by endogenous /
+    anticipated movements in market rates). NOTE: the paper estimates
+    responses of IP and the PPI ONLY; it contains no unemployment
+    response (unemployment enters only as a forecast regressor in
+    eq. 1). Useful robustness anchors: excluding 1979:10-1981:5 gives
+    an IP peak of -3.4% with price estimates virtually unchanged;
+    alternative first-stage specs give shock series correlated > 0.97
+    with the baseline; the shock's correlation with the actual change
+    in the funds rate is 0.43 (pp. 1066-67, 1071, 1077).
+
+recommend_when:
+  - "user wants narrative-identified monetary shocks"
+  - "small VAR or LP framework with one identified shock of interest"
+  - "research question is sensitive to the price/output puzzle"
+  - "sample falls within 1969-2008 (where extended R&R shocks exist)"
+  - "user prefers narrative identification over HF-instruments (GK 2015) or sign restrictions (Uhlig 2005)"
+not_recommended_when:
+  - "sample is outside 1969-2008 (no R&R shock series)"
+  - "research interest is forward guidance / ZLB-era policy (R&R shocks predate the ZLB)"
+  - "non-US context: R&R methodology has been replicated for ECB and BoE but with different conventions"
+  - "user wants multi-shock identification (R&R identifies one shock; for multi-shock use sign or proxy with multiple instruments)"
+alternative_approaches:
+  - {id: "gertler_karadi_2015_proxy_svar", reason: "HF-instrument identification: different identifying source, covers ZLB-era"}
+  - {id: "cee_1999_monetary_svar", reason: "recursive identification baseline; likely understates effects per R&R argument"}
+  - {id: "uhlig_2005_sign_restrictions", reason: "sign-restriction alternative with a different identifying assumption"}
+  - {id: "antolin_diaz_rubio_ramirez_2018", reason: "narrative sign restrictions, combining R&R-style narrative with sign restrictions"}
+
+implementation_notes:
+  replication: "scripts/replications/romer_romer_2004_narrative_mp/"
+  identification_note: >
+    A recursive VAR with the shock ordered last is not equivalent to a
+    proxy SVAR: it also imposes zero impact responses of the variables
+    ordered before it. (Coibion 2012 uses single-equation and
+    cumulated-shock VARs, not a proxy SVAR.)
+  data_sources:
+    rr_original: "Romer-Romer (2004) AER replication archive (1969-1996 monthly shock series)"
+    extensions:
+      - "Coibion (2012) replication archive (AEJ:Macro)"
+      - "Wieland-Yang (2020) replication archive (JMCB)"
+    fred_alignment: >
+      The downstream VAR variables (INDPRO, CPIAUCSL, UNRATE, FEDFUNDS)
+      are all in FRED-MD. The RR shock series itself is NOT in FRED-MD
+      and must be obtained from the authors' or extenders' archives.
+  pairings:
+    - "Pair with Gertler-Karadi 2015 for two-shock-source robustness checks"
+    - "Use the RR shock as an external instrument in LP-IV (Stock-Watson 2018) if LP-IV is preferred"
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-10"
+  against: "AER 94(4) published PDF, field-by-field"
+  pdf_location: "papers/romer_romer_2004_narrative_mp.pdf"
+  notes: >
+    Extension endpoints (Coibion 2012, Wieland-Yang 2020) are from
+    parametric knowledge; verify them in each archive before relying on
+    them.
+

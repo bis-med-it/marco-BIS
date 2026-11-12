@@ -1,0 +1,90 @@
+# Replication config for Lanne, Meitz, Saikkonen (2017).
+# Mirrors the dictionary entry at:
+#   skills/model-dictionary/entries/lanne_meitz_saikkonen_2017_nongaussian_svar.yaml
+#
+# Methodological replication: LMS is a general identification approach, so
+# the empirical application here is a standard small US monetary VAR
+# (output / prices / federal funds rate), monthly 1960-2007 (pre-ZLB).
+#
+# The exercise has three parts:
+#   1. Cholesky baseline (ffr ordered last), the textbook contractionary
+#      monetary policy shock.
+#   2. LMS identification by FastICA and by pml_t (parametric t-ML),
+#      recovering B up to column permutation and sign from the
+#      non-Gaussian residuals.
+#   3. Diagnose residual non-Gaussianity and compare the identifications
+#      side by side.
+
+replication:
+  id: "lanne_meitz_saikkonen_2017_nongaussian_svar"
+  title: "Lanne, Meitz, Saikkonen (2017) Non-Gaussian SVAR"
+  subtitle: "Three-variable monetary VAR identified by ICA on non-Gaussian residuals"
+
+# --- Data ---
+data:
+  source: "fred_md"
+  sample_start: "1960-01-01"
+  sample_end: "2007-12-01"
+
+  series:
+    - {name: "indpro", fred_code: "INDPRO"}
+    - {name: "cpi",    fred_code: "CPIAUCSL"}
+    - {name: "ffr",    fred_code: "FEDFUNDS"}
+
+  transforms:
+    indpro: "log"
+    cpi:    "log"
+    ffr:    "level"
+
+  variable_order: ["indpro", "cpi", "ffr"]
+
+  variable_labels:
+    indpro: "Industrial Production (log)"
+    cpi:    "CPI (log)"
+    ffr:    "Federal Funds Rate (%)"
+
+# --- Model ---
+model:
+  class: "var"
+  lags: 12
+  trend: "c"
+
+# --- Identification ---
+identification:
+  # Three passes: Cholesky baseline + LMS / FastICA + LMS / pml_t.
+  cholesky:
+    ordering: ["indpro", "cpi", "ffr"]
+    # The textbook monetary shock under recursive ID with ffr last.
+    shock_of_interest: "ffr_shock"
+
+  # Shared labelling / sign-pinning for both LMS methods.
+  # ICA columns come back in arbitrary order, so label by max contemporaneous
+  # impact, then pin signs so the contractionary MP shock is +1 on ffr.
+  nongaussian:
+    shock_names: ["real_activity", "price", "monetary_policy"]
+    label_by:
+      real_activity: "indpro"
+      price:         "cpi"
+      monetary_policy: "ffr"
+    sign_normalization:
+      real_activity:   {indpro: +1}
+      price:           {cpi:    +1}
+      monetary_policy: {ffr:    +1}    # +ffr = contractionary
+    fastica:
+      nonlinearity: "tanh"
+    pml_t:
+      n_restarts: 3
+      nu_init: 5.0
+
+# --- IRF ---
+irf:
+  horizon: 48     # 4 years monthly
+  bands: "residual_bootstrap"
+  n_draws: 200    # bands are visually indistinguishable from 500 draws;
+                  # LMS bootstrap variability is dominated by residual
+                  # resampling, not by n_draws.
+  credible_intervals: [0.68, 0.90]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

@@ -1,0 +1,96 @@
+# Replication config for Christiano, Eichenbaum & Evans (1996),
+# "The Effects of Monetary Policy Shocks: Evidence from the Flow of Funds",
+# Review of Economics and Statistics 78(1), 16-34.
+#
+# Mirrors the dictionary entry:
+#   skills/model-dictionary/entries/cee_1996_flow_of_funds.yaml
+#
+# Scope: Section II core (monetary + macro blocks). The paper's flow-of-funds
+# block (BNET, HNET, ...) is NOT estimable from FRED-QD (see README).
+
+replication:
+  id: "cee_1996_flow_of_funds"
+  title: "CEE (1996) Flow of Funds - Monetary Policy Shocks"
+  subtitle: >
+    Six-variable quarterly OLS VAR(4), 1960Q1-1992Q4; FF and NBRD policy
+    shocks (Cholesky); +M1 / +UNEMP / no-PCOM variants. FRED-QD proxies.
+
+# --- Data ---
+data:
+  source: "fred_qd"
+  # p. 18: "quarterly data over the period 1960:Q1-1992:Q4". Treated as the
+  # DATA window (132 obs; T_eff = 128). The window-vs-regression-sample
+  # ambiguity is logged in the entry (verified.notes item d).
+  sample_start: "1960-01-01"
+  sample_end: "1992-12-31"
+
+  series:
+    - {name: "rgdp",     fred_code: "GDPC1"}      # Y  (p. 18; appendix p. 34 item 3)
+    - {name: "deflator", fred_code: "GDPCTPI"}    # P  (p. 18)
+    - {name: "pcom",     fred_code: "PPIACO"}     # PCOM proxy (paper source unstated, appendix gap)
+    - {name: "ffr",      fred_code: "FEDFUNDS"}   # FF (p. 18)
+    - {name: "nbr",      fred_code: "NONBORRES"}  # -> NBRD = -log (p. 18; extended credit omitted)
+    - {name: "totres",   fred_code: "TOTRESNS"}   # TR (p. 18)
+    - {name: "m1_real",  fred_code: "M1REAL"}     # -> nominal M1 (Table 1 D_t variant)
+    # CPI reverses M1REAL's own deflation (FRED: M1SL / CPIAUCSL); the GDP
+    # deflator stays a model variable and must not be used for this step.
+    - {name: "cpi_for_m1", fred_code: "CPIAUCSL"}
+    - {name: "unemp",    fred_code: "UNRATE"}     # UNEMP D_t variant (Table 2)
+    - {name: "pcom_crm", fred_code: "WPSID62"}    # PPI crude materials, paper fn. 11 alternative PCOM
+
+  preprocess:
+    - {operation: "nominalise", real: "m1_real", deflator: "cpi_for_m1", output: "m1"}
+
+  transforms:
+    rgdp:     "log"
+    deflator: "log"
+    pcom:     "log"
+    ffr:      "level"
+    nbr:      "log"      # negated to NBRD in replicate.py (paper: "minus the log", p. 18)
+    totres:   "log"
+    m1:       "log"
+    unemp:    "level"
+    pcom_crm: "log"
+
+  variable_labels:
+    rgdp:     "Real GDP (Y)"
+    deflator: "GDP Deflator (P)"
+    pcom:     "Commodity Prices (PCOM)"
+    ffr:      "Federal Funds Rate (FF)"
+    nbrd:     "-log Nonborrowed Reserves (NBRD)"
+    totres:   "Total Reserves (TR)"
+    m1:       "M1"
+    unemp:    "Unemployment Rate"
+    pcom_crm: "Crude-Materials PPI (PCOM alt, fn. 11)"
+
+# --- Model (p. 17 eq. 2; p. 18: q = 4) ---
+model:
+  class: "var"
+  lags: 4
+  trend: "c"          # constant only: eq. (2) has intercept A_0, no trend term
+
+# --- Identification (p. 18, verbatim orderings) ---
+# Six runs (five paper systems plus the fn. 11 robustness run); D_t enters
+# one at a time per the paper's strategy.
+# UNEMP is placed JUST BEFORE the policy variable (p. 18 exception for
+# production-activity indicators).
+identification:
+  method: "cholesky"
+  runs:
+    - {name: "bench_ff",   ordering: ["rgdp", "deflator", "pcom", "ffr", "nbrd", "totres"],          shock: "ffr",  note: "benchmark FF policy shock (Sect II.B; Table 1 FF/NBRD/TR cols, Table 2 Y/PCOM cols, Fig 4 left)"}
+    - {name: "bench_nbrd", ordering: ["rgdp", "deflator", "pcom", "nbrd", "ffr", "totres"],          shock: "nbrd", note: "benchmark NBRD policy shock"}
+    - {name: "nopcom_ff",  ordering: ["rgdp", "deflator", "ffr", "nbrd", "totres"],                  shock: "ffr",  note: "PCOM excluded - price puzzle demonstration (Fig 4 right column)"}
+    - {name: "m1_ff",      ordering: ["rgdp", "deflator", "pcom", "ffr", "nbrd", "totres", "m1"],    shock: "ffr",  note: "D = M1, ordered last (Table 1 M1 column)"}
+    - {name: "unemp_ff",   ordering: ["rgdp", "deflator", "pcom", "unemp", "ffr", "nbrd", "totres"], shock: "ffr",  note: "D = UNEMP just before policy variable (p. 18; Table 2 UNEMP column)"}
+    - {name: "bench_ff_crm", ordering: ["rgdp", "deflator", "pcom_crm", "ffr", "nbrd", "totres"],    shock: "ffr",  note: "ROBUSTNESS (disclosed): PCOM = crude-materials PPI, the paper's own fn. 11 alternative; baseline headline remains PPIACO"}
+
+# --- IRF / FEVD ---
+irf:
+  horizon: 24                 # FEVD evaluated at 24 quarters (note to Table 1)
+  bands: "asymptotic_mc"      # fn. 8 p. 19: Doan (1990) ex. 10.1 MC from asymptotic distribution
+  n_draws: 500                # fn. 8: 500 draws (paper value)
+  band_interpretation: "68% band ~ +/- 1 standard error (paper reports 1-s.e. bands)"
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

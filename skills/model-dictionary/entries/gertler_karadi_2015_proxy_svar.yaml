@@ -1,0 +1,177 @@
+id: "gertler_karadi_2015_proxy_svar"
+citation:
+  authors: "Gertler, Karadi"
+  year: 2015
+  title: "Monetary Policy Surprises, Credit Costs, and Economic Activity"
+  journal: "American Economic Journal: Macroeconomics"
+  volume: "7"
+  issue: "1"
+  pages: "44-76"
+
+research_questions:
+  - "effect of monetary policy shocks identified by high-frequency surprises"
+  - "credit channel of monetary policy"
+  - "role of term premia and credit spreads in monetary transmission"
+  - "monetary policy at the effective lower bound / forward guidance period"
+  - "external-instrument / proxy SVAR identification of monetary shocks"
+tags:
+  - monetary_policy
+  - proxy_svar
+  - external_instruments
+  - high_frequency_identification
+  - credit_spreads
+  - forward_guidance
+  - us_macro
+  - canonical
+  - identification
+
+model:
+  class: "structural_var"
+  prior: null                  # baseline is classical VAR with external-instrument identification; Bayesian variants used in robustness
+  variables:
+    endogenous:
+      - {name: "1-year Treasury rate", proxy: "GS1 (FRED)", transform: "level", role: "policy indicator (captures forward guidance, not just FFR)"}
+      - {name: "log industrial production", proxy: "INDPRO (FRED)", transform: "log", role: "real activity"}
+      - {name: "log CPI", proxy: "CPIAUCSL (FRED)", transform: "log", role: "price level"}
+      - {name: "excess bond premium", proxy: "EBP series from Gilchrist-Zakrajšek 2012 (updated by Favara et al.)", transform: "level", role: "credit-market conditions; the paper's key variable"}
+    exogenous: []
+    paper_baseline_note: >
+      The four variables above are the paper's expository "simple /
+      stripped-down VAR" (pp. 55, 60-62; Figure 1). The paper's BASELINE
+      is a SIX-variable system (p. 63): IP, CPI, 1-year rate, EBP, plus
+      the mortgage spread and the 3-month commercial-paper spread; larger
+      7-variable variants add one additional rate at a time (FFR, 2y, 5y,
+      10y, 5x5 forward; pp. 63-65).
+  lags: 12                     # not stated in the published text (taken from the replication archive / online appendix); the replication literature consistently uses 12 monthly lags following GK (e.g. Bauer-Swanson's reassessment; Ramey 2016)
+  frequency: "monthly"
+
+identification:
+  method: "external_instrument"        # proxy SVAR; the paper follows Stock-Watson (2012) and Mertens-Ravn (2013), p. 50
+  policy_variable: "1-year Treasury rate (GS1)"
+  external_instrument:
+    name: "ff4"
+    description: >
+      Change in the 3-month-ahead federal funds futures price in a tight
+      (30-minute) window around FOMC announcements (a scheduled-only
+      restriction appears only in the Greenbook robustness, p. 72),
+      aggregated to monthly frequency by the paper's recipe: cumulate the
+      daily surprises, take monthly averages of the cumulative series, and
+      first-difference the monthly averages (equivalently, an average of
+      rolling 31-day surprise sums) (pp. 50-53). The Kuttner timing
+      adjustment T/(T−t) applies to the current-month contract (ff1), not
+      to ff4 (fn. 6, p. 53). A plain
+      within-month sum is NOT the paper's instrument and changes its
+      time-series properties (see Stock-Watson 2018, pp. 941-942). ff4 is preferred over the spot FFR
+      contract (ff1) because it better captures expected future policy and
+      therefore forward guidance, important during the 1994-onward 'open
+      Fed' period and especially at the ZLB.
+    variants_used_in_paper:
+      - "ff1: current-month fed funds future surprise"
+      - "ff4: 3-month-ahead fed funds future surprise (headline)"
+      - "ed2, ed3, ed4: 2-, 3-, 4-quarter eurodollar future surprises"
+  rationale: >
+    HF surprises around FOMC announcements are unlikely to be contaminated
+    by other macro shocks within the narrow window, so they are valid
+    instruments for the structural monetary policy shock. Regressing the
+    reduced-form residual of the policy indicator on the instrument
+    isolates the part driven by exogenous policy surprises. Other variables'
+    responses to the implied structural shock are then obtained from the
+    sample covariances (Stock-Watson 2012 / Mertens-Ravn 2013 approach).
+  algorithm: >
+    1. Estimate reduced-form VAR by OLS.
+    2. Regress the policy indicator's (GS1) reduced-form residual on the
+       external instrument (ff4). The fitted values are the
+       instrument-predicted policy innovation used for IV identification
+       of the impact column, NOT the realized structural shock path (a
+       noisy valid instrument identifies the impact vector through
+       covariance restrictions; under unit shock variance and
+       invertibility the shock itself is recovered as
+       eps_t = b' Sigma_u^{-1} u_t).
+    3. Use the implied column of the structural impact matrix to compute
+       IRFs of all variables. The paper reports ONE-STANDARD-DEVIATION
+       shocks (~25 bp impact on GS1 in the simple VAR, Fig 1 p. 61;
+       ~20 bp in the baseline, Fig 2 p. 63). There is no 25-bp
+       normalisation by construction; cross-spec comparisons normalise
+       to similar 3-month effects (fn 20).
+    4. Confidence bands: wild bootstrap a la Mertens-Ravn with BOTH
+       stages re-estimated inside each replication (no generated-
+       regressor problem), reported at the 95% level (p. 60 fn 13).
+
+sample:
+  start: "1979M7"
+  end: "2012M6"
+  notes: >
+    Two distinct windows (pp. 54-55): the VAR is estimated on
+    1979:7-2012:6 (start chosen to match the beginning of Volcker's
+    tenure), while the INSTRUMENTS are available only 1991:1-2012:6
+    (258 monthly obs, Table 3), and identification uses the reduced-form
+    residuals over that shorter window. (Fed funds futures did not
+    exist in 1979; CBOT launch was 1988.) The headline specification
+    runs through the ZLB period because GS1 (not FFR) is the policy
+    indicator and remains informative during forward guidance.
+
+expected_results:
+  monetary_contraction:
+    one_year_rate: "rises ~25 bp (simple VAR, Fig 1 p. 61) / ~20 bp (baseline, Fig 2 p. 63) on impact for a ONE-SD shock; reverts to trend after roughly a year"
+    industrial_production: "declines; trough at ~18 months; statistically significant (pp. 61, 63)"
+    cpi: "small, steady decline that is NOT statistically significant (pp. 46, 61, 63)"
+    excess_bond_premium: "rises sharply; this is the paper's key finding (~+10 bp impact, Fig 1; ~+8 bp, elevated ~8 months, Fig 2)"
+    term_premium_implied: "rises (term-structure decomposition, Section III / Figure 5, pp. 65-67: virtually all of the 2/5/10-yr rate rise is term premium; ~80% of the 1-yr move)"
+    credit_spreads_implied: "widen disproportionately relative to the size of the policy rate move"
+    first_stage: "Fig 1: F = 21.55, robust F = 17.64, R^2 = 7.76%; Table 3 col (2): robust F = 17.50, N = 258 (pp. 59, 61)"
+  notes: >
+    The headline finding: modest movements in short rates produce sizeable
+    movements in credit costs, driven by both term premia and credit spreads.
+    The credit-channel transmission is much stronger than in standard
+    Cholesky-identified VARs (e.g., CEE 1999), which understate the EBP
+    response. The result implies the Fed influences the economy partly by
+    affecting risk premia, not just the path of policy rates.
+
+recommend_when:
+  - "user wants HF-identified monetary shocks (not Cholesky)"
+  - "research question involves the credit channel or financial-market transmission"
+  - "sample includes the ZLB / forward guidance period (1-year rate stays informative)"
+  - "user has access to FOMC HF surprise data (Kuttner, GSS, or Gertler-Karadi files)"
+  - "user wants to compare proxy-SVAR vs LP-IV (Stock-Watson 2018)"
+not_recommended_when:
+  - "no HF instrument is available for the country/sample"
+  - "sample predates the start of fed funds futures (1989 for ff4 quality data)"
+  - "research interest is pre-1979 monetary regimes (no instrument)"
+  - "very short sample (instrument relevance / weak-instrument problems)"
+  - "user is satisfied with Cholesky identification and is not studying credit channel"
+alternative_approaches:
+  - {id: "stock_watson_2018_lpiv", reason: "LP-IV uses the same external instrument but in a local-projections framework, robust to VAR misspecification"}
+  - {id: "cee_1999_monetary_svar", reason: "recursive identification baseline; will produce a weaker EBP response"}
+  - {id: "uhlig_2005_sign_restrictions", reason: "sign restrictions as an alternative to external instruments"}
+  - {id: "jorda_2005_lp", reason: "LP framework underlying the LP-IV variant"}
+
+implementation_notes:
+  replication: "scripts/replications/gertler_karadi_2015_proxy_svar/"
+  fred_alignment: >
+    GS1, INDPRO, CPIAUCSL are in FRED-MD
+    (data/fred_md/). The EBP series is NOT in FRED-MD; fetch from the
+    Federal Reserve Board (Favara et al. update of Gilchrist-Zakrajšek 2012).
+    The ff4 instrument must be supplied externally; typical sources are
+    the AEA replication archive (dataset DOI 10.1257/mac.20130329) or the
+    Bauer-Swanson monetary surprise dataset.
+  weak_instrument_warning: >
+    DO NOT EXPECT THE PAPER'S FIRST STAGE from the in-repo substitutes.
+    The cached JK shock series (data/jk_shocks/, MP_median) with the
+    BAA-AAA spread proxy for EBP yields first-stage F ~ 9 on the
+    replication's full extended sample (below the paper's 21.55 and at
+    the weak-instrument boundary), with some response signs flipping;
+    sub-windows can be far weaker. This is documented in the replication's
+    paper_targets.yaml and README. If this entry is being routed to as a
+    REMEDY (e.g. to escape a price puzzle), check the first-stage F
+    BEFORE committing the session to the proxy route; with a weak first
+    stage prefer sign restrictions or AR-style weak-ID-robust inference.
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-10"
+  against: "AEJ:Macro 7(1) published PDF, field-by-field"
+  pdf_location: "papers/gertler_karadi_2015_proxy_svar.pdf"
+  notes: >
+    The raw ff4 surprise is the headline instrument; the Greenbook-purified
+    variant is a robustness check (Fig 10, p. 74).
+

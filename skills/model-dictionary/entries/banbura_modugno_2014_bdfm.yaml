@@ -1,0 +1,188 @@
+id: "banbura_modugno_2014_bdfm"
+citation:
+  authors: "Bańbura, Modugno"
+  year: 2014
+  title: "Maximum Likelihood Estimation of Factor Models on Datasets with Arbitrary Pattern of Missing Data"
+  journal: "Journal of Applied Econometrics"
+  volume: "29"
+  issue: "1"
+  pages: "133-160"
+
+research_questions:
+  - "factor model estimation with missing data of any kind (ragged edge, different start dates, mixed frequencies)"
+  - "real-time nowcasting with incomplete data releases"
+  - "dynamic factor models when EM with complete data is not applicable"
+  - "extracting common factors from a mixed-frequency macro panel"
+  - "GDP nowcasting from monthly indicators with publication lags"
+tags:
+  - dfm
+  - missing_data
+  - em_algorithm
+  - maximum_likelihood
+  - nowcasting
+  - mixed_frequency
+  - ragged_edge
+  - euro_area
+  - canonical
+  - real_time
+
+model:
+  class: "dfm"                       # dynamic factor model
+  prior: null                        # frequentist ML via EM; Bayesian variants exist
+  variables:
+    endogenous:
+      # Empirical illustration: Euro-area macro panel for GDP nowcasting
+      - {name: "real GDP (EA)", proxy: "Eurostat quarterly real GDP", transform: "log_diff", role: "target variable for nowcast"}
+      - {name: "industrial production (EA)", proxy: "Eurostat IPI", transform: "log_diff", role: "monthly real activity"}
+      - {name: "PMI manufacturing / services (EA)", role: "soft monthly indicator"}
+      - {name: "unemployment rate (EA)", transform: "diff", role: "labour market (Appendix A marks it Diff., p. 154)"}
+      - {name: "raw-materials / commodity prices", transform: "log_diff", role: "prices (no consumer-price series appears in any composition, Appendix A)"}
+      - {name: "retail sales (EA)", transform: "log_diff", role: "demand"}
+      - {name: "three compositions: Small/Medium/Large = 14/46/101 series", role: "real activity + ECS/PMS surveys + US block + financial/commodity series (Table V note, p. 149; p. 147 prose says 48 for Medium, a paper-internal inconsistency)"}
+    exogenous: []
+    note: >
+      The paper's contribution is general: it works for any panel with
+      missing observations. The headline application is Euro-area
+      nowcasting. The R 'dfms' package ships the data as BM14_M
+      (monthly panel) and BM14_Q (quarterly); the suffixes denote
+      FREQUENCY, not size. Small/Medium/Large membership is in
+      BM14_Models.
+  factors:
+    count: "application pools r = 1..5 with equal weights (p. 147); Monte Carlo uses r in {1, 3}; identification needs 2r+1 <= n (fn 5, p. 135)"
+    dynamics: "factor follows VAR(p), p = 1 or 2, pooled across both (p. 147)"
+  lags: "factor VAR p = 1-2; idiosyncratic component estimated BOTH iid and AR(1); the two are 'equivalent' for GDP nowcasts (p. 148), and AR(1) can reduce factor precision in small samples with many missings (Table III, p. 144)"
+  frequency: "mixed (monthly indicators + quarterly target)"
+
+estimation:
+  approach: "expectation_maximisation_with_missing_data"
+  key_innovation: >
+    BM 2014 derive a tractable EM algorithm for factor models on panels
+    with an arbitrary pattern of missing data and unknown loadings,
+    using the Kalman filter/smoother to integrate over missing
+    observations (NaN entries in the panel), and extend it to serially
+    correlated idiosyncratic errors (pp. 133-136, Appendix B). This
+    handles:
+      (i) Ragged edge: series end at different dates due to staggered
+          publication;
+      (ii) Different start dates: series begin at different points;
+      (iii) Mixed frequencies: quarterly variable observed every 3rd
+            month, NaN otherwise; aggregation constraints in the
+            measurement equation;
+      (iv) Arbitrary internal missingness: e.g., one-off data
+            imputation errors that the researcher wants to skip.
+  algorithm: >
+    E-step: Kalman smoother computes expected factor moments given
+            observed data and current parameter estimates, properly
+            integrating over missing values.
+    M-step: Maximum-likelihood updates for loadings, factor VAR
+            coefficients and idiosyncratic variances, with a SELECTION
+            MATRIX W_t excluding missing entries from each update;
+            loading restrictions (mixed frequency) imposed via the
+            restricted M-step, eq. (13), pp. 138-139.
+    Iterate until the likelihood increase between steps is small
+    (following Doz et al. 2008); initialise from the PCA-based
+    two-step of Giannone et al. (2008) with missing values replaced
+    by N(0,1) draws (p. 141, fn 11).
+  mixed_frequency_mechanics: >
+    Quarterly GDP growth is a partially observed MONTHLY series
+    assigned to the third month of each quarter (Appendix C, pp.
+    159-160): the Mariano-Murasawa (2003) approximation y_Q =
+    (1 + L + L^2)^2 y_M gives the restricted 5-weight loading block
+    [Lambda_Q, 2Lambda_Q, 3Lambda_Q, 2Lambda_Q, Lambda_Q] on
+    f_t..f_{t-4}. (Contrast Schorfheide-Song 2015, which uses an
+    exact level-average identity instead.)
+  ar1_idiosyncratic: >
+    The serially-correlated extension (abstract's second
+    contribution): eps_it = eps~_it + xi_it with xi iid N(0, kappa),
+    kappa fixed very small; the AR(1) component eps~ is ADDED TO THE
+    STATE VECTOR (eqs. 14-15, pp. 139-140); the Reis-Watson
+    lagged-observable trick fails under arbitrary missingness.
+  monte_carlo: >
+    500 replications, Doz-et-al. DGP (controls: factor persistence
+    rho, idiosyncratic AR alpha, cross-correlation tau,
+    signal-to-noise beta, loading lags s); 0/10/25/40% randomly
+    missing. Headline: EM (BM) >= Rubin-Thayer iterative PCA (RT) >
+    Stock-Watson (SW) in trace R-squared of estimated vs true
+    factors; gains grow with missingness, small n/T and strong factor
+    dynamics (BM/SW up to ~1.8); robust to r-hat = r+1
+    (Sections 3.1-3.2, pp. 140-146).
+
+identification:
+  method: "none"   # factor model: the common/idiosyncratic decomposition is implicit, no structural identification
+  rationale: >
+    The paper is about ESTIMATION not structural identification.
+    Factors are identified up to a rotation; the paper does not
+    address rotation choice (recursive ordering, sign restrictions,
+    etc.). Subsequent literature (Forni-Hallin-Lippi-Reichlin etc.)
+    layers structural identification on top.
+  rotation_normalisation: "common choice: Lambda upper triangular with positive diagonal, OR Lambda' Lambda = I"
+
+sample:
+  start: "1993M1"                      # recursive estimation from January 1993 (p. 147)
+  end: "2009M10 (single vintage, 15 October 2009)"
+  notes: >
+    PSEUDO real-time, not true vintages: "we use the final figures as
+    of October 2009, but we observe the real-time data availability"
+    (fn 16, p. 147). This is one vintage with the historical publication-delay
+    pattern replicated. Forecast evaluation 2000:Q1-2007:Q4 over seven
+    horizons Q(-1)M1 .. Q(+1)M1. For modern use, FRED-MD/FRED-QD
+    provide US analogues; ECB SDW or Eurostat provide Euro-area data.
+
+expected_results:
+  nowcasting_performance:
+    vs_univariate: >
+      factor models beat the paper's benchmarks (an AR with AIC lags and the sample
+      mean): average RMSFE 0.22-0.25 vs 0.30-0.31 (Table V, p. 149), largest
+      gains at short horizons. NO random-walk benchmark exists in the paper.
+      Small ~ Medium >= Large; the 101-variable spec is the WORST factor spec
+      (p. 148).
+    vs_balanced_panel: >
+      PARITY, not dominance: the Banbura-Runstler (2011) balanced-panel
+      benchmark 'performs on average equally well as the Small and Medium
+      specifications' (p. 148; both 0.22). The advantages are automation and
+      flexibility (short-history and quarterly series enter directly). The
+      EM's efficiency EDGE shows in the Monte Carlo vs RT/SW, growing with the
+      missing-data share.
+    real_time_pattern: "nowcast RMSFE declines steadily (near-monotonically; e.g. Medium uncorr. ticks 0.24 -> 0.25 at one horizon) across the seven origins Q(-1)M1 .. Q(+1)M1 (Table V, p. 149)"
+  notes: >
+    The headline contribution is methodological (EM under arbitrary
+    missingness + the AR(1)-idiosyncratic extension). The published
+    version contains NO news/forecast-revision decomposition and no
+    indicator-contribution analysis; the news derivation lives in the
+    ECB WP 1189 (2010) version only. The familiar "soft indicators
+    early, hard later" message is from Banbura-Runstler (2011) /
+    Giannone et al. (2008), not this paper.
+
+recommend_when:
+  - "user wants factor-based nowcasting / short-horizon forecasting"
+  - "data panel has missing observations of any kind (ragged edge, mixed frequency, different start dates)"
+  - "real-time / data-vintage analysis is a constraint"
+  - "user has a large cross-section (15+ indicators) and a small number of factors"
+  - "frequentist (EM/ML) framework preferred: use the authors' implementation for the paper's estimator; the bundled example is Bayesian Gibbs, proposed only after disclosing and confirming that substitution"
+not_recommended_when:
+  - "panel is fully balanced (then standard PC or two-step DFM is simpler)"
+  - "structural shock identification is the goal (use FAVAR or other structural DFMs)"
+  - "very small cross-section (3-5 indicators), where a VAR or BVAR is more transparent"
+alternative_approaches:
+  - {id: "schorfheide_song_2015_mfvar", reason: "Bayesian state-space MF-VAR for the same nowcasting problem, with a different distributional treatment"}
+  - {id: "bbe_2005_favar", reason: "FAVAR adds factors to a small VAR for structural analysis, a different goal"}
+  - {id: "bgr_2010_large_bvar", reason: "alternative way to use many variables: shrinkage instead of factor reduction"}
+
+implementation_notes:
+  replication: "scripts/replications/banbura_modugno_2014_bdfm/"
+  alternative_implementations: >
+    - R: dfms package (Krantz, https://sebkrantz.github.io/dfms/),
+      a direct implementation including BM14 algorithm and datasets.
+    - Python: statsmodels.tsa.statespace.dynamic_factor_mq (MQ = mixed
+      Q/M version).
+    - MATLAB: BM 2014 replication files in the Journal of Applied
+      Econometrics Data Archive.
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-10"
+  against: "JAE 29(1) published PDF (Wiley), field-by-field"
+  pdf_location: "papers/banbura_modugno_2014_bdfm.pdf"
+  notes: >
+    The paper is frequentist EM-ML and leaves Bayesian treatment to future
+    work (p. 150); the replication's Gibbs BDFM is a documented deviation.

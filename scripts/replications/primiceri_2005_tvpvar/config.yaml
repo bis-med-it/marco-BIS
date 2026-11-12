@@ -1,0 +1,44 @@
+# Replication config for Primiceri (2005) TVP-VAR.
+# Methodological demo using FRED-QD; uses time-varying coefficients
+# WITHOUT stochastic volatility (full Primiceri also adds SV).
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/primiceri_2005_tvpvar.yaml
+
+replication:
+  id: "primiceri_2005_tvpvar"
+  title: "Primiceri (2005) TVP-VAR: coefficients only"
+  subtitle: "Time-varying coefficients via Gibbs; constant Σ (no SV)"
+
+# --- Data ---
+data:
+  source: "fred_qd"
+  file: "data/fred_qd/dataset.csv"
+  sample_start: "1953-01-01"
+  sample_end: "2001-09-30"
+  series:
+    - {name: "inflation", fred_code: "GDPCTPI", transform: "dlog_x_400"}
+    - {name: "unemployment", fred_code: "UNRATE", transform: "level"}
+    - {name: "tbill_3m", fred_code: "TB3MS", transform: "level"}
+  variable_labels:
+    inflation:    "Inflation (% annualised)"
+    unemployment: "Unemployment Rate"
+    tbill_3m:     "3-month T-bill Rate"
+
+# --- Model ---
+model:
+  class: "tvp_var"
+  lags: 2                          # paper p. 830: two lags
+  training_sample: 40              # 10 years, paper p. 830-831 (paper: 1953:I-1962:IV; here the first 40 effective obs, 1959:IV-1969:III)
+  Q_prior_scale: 0.0001            # k_Q^2 = 0.01^2 (paper p. 831); lib IW scale = this * tau * V_OLS
+  Q_prior_df_factor: 1
+
+# --- Gibbs ---
+gibbs:
+  n_iter: 300                      # paper p. 830: 10,000 (discard first 2000); small demo run here
+  burn_in: 100
+  thin: 1
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

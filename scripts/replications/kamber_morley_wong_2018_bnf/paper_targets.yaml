@@ -1,0 +1,57 @@
+# Paper-target validation for Kamber-Morley-Wong (2018) BNF replication.
+#
+# KMW 2018 (REStat) impose a low signal-to-noise ratio delta = psi(1)^2
+# (trend-shock variance / forecast-error variance) on the BN decomposition
+# via the exact linear restriction sum(phi) = 1 - 1/sqrt(delta-bar).
+#
+# Targets below anchor on the paper's formula and Figure 2-3 features;
+# magnitude targets are marked replication-derived where applicable.
+
+targets:
+  - description: "Sample size (quarterly 1959Q1-2019Q4, 244 obs, pre-COVID)"
+    location: "config.yaml; KMW use 1947Q1-2016Q2 (fn. 1, p. 550), we use 1959-2019"
+    paper_value: 244.0
+    paper_units: "count"
+    our_key: "n_obs"
+    tolerance: 6.0
+    tolerance_kind: "absolute"
+
+  - description: "sum(phi) under delta-bar=0.25 equals 1 - 1/sqrt(0.25) = -1 (exact linear restriction)"
+    location: "KMW 2018 eq. (6), Sec. II.B p. 552 (delta = psi(1)^2 is eq. 4, Sec. II.A); -1 is the replication's delta-bar = 0.25 value; the paper's US delta-bar = 0.24 implies sum(phi) ~ -1.041"
+    paper_value: -1.0
+    paper_units: "coefficient sum"
+    our_key: "sum_phi"
+    tolerance: 0.0001
+    tolerance_kind: "absolute"
+
+  - description: "Unconstrained delta-hat on US GDP well above 1 (why the low delta-bar binds; paper: ~2)"
+    location: "KMW 2018: AR(1) MLE delta-hat = 2.22 (Sec. II.A p. 552); AR(12) MLE = 1.86 (Sec. II.C p. 555), the like-for-like AR(12) anchor"
+    paper_value: 1.86
+    paper_units: "variance ratio"
+    our_key: "delta_unconstrained"
+    tolerance: 1.5
+    tolerance_kind: "absolute"
+
+  - description: "Unconstrained BN cycle std (small; BN assigns most variance to trend), replication-derived"
+    location: "Replication anchor; not a paper value"
+    paper_value: 0.65
+    paper_units: "log-percentage points"
+    our_key: "bn_cycle_std"
+    tolerance: 0.20
+    tolerance_kind: "absolute"
+
+  - description: "Amplitude ratio KMW/BN > 1 (paper: BN-filter gap large in amplitude, p. 554, vs the small-amplitude AR(1) BN gap, p. 551; no ratio reported)"
+    location: "Replication-derived ratio (no paper ratio exists); the BNF-vs-unconstrained-AR(12) contrast is Fig. 3 bottom panel, corr 0.39, p. 555"
+    paper_value: 3.0
+    paper_units: "ratio"
+    our_key: "kmw_bn_amplitude_ratio"
+    tolerance: 2.0
+    tolerance_kind: "absolute"
+
+  - description: "Output gap negative at the Great Recession trough, 2009Q2 (NBER alignment)"
+    location: "KMW 2018 Fig. 2, p. 554: gap deeply and significantly negative in 2009"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "gap_2009q2_negative"
+    tolerance: 0.0
+    tolerance_kind: "absolute"

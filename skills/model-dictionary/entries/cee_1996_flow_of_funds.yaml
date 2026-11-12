@@ -1,0 +1,219 @@
+id: "cee_1996_flow_of_funds"
+citation:
+  authors: "Christiano, Eichenbaum, Evans"
+  year: 1996
+  title: "The Effects of Monetary Policy Shocks: Evidence from the Flow of Funds"
+  journal: "Review of Economics and Statistics"
+  volume: "78"
+  issue: "1"
+  pages: "16-34"
+
+research_questions:
+  - "effect of monetary policy shocks on the US economy"
+  - "how do borrowing and lending across sectors respond to a monetary policy shock (flow of funds)"
+  - "measuring monetary policy shocks: federal funds rate vs nonborrowed reserves"
+  - "do households adjust financial assets and liabilities after a monetary shock (limited participation)"
+  - "response of business sector net funds raised / short-term debt to monetary contraction"
+tags:
+  - monetary_policy
+  - structural_var
+  - cholesky
+  - us_macro
+  - flow_of_funds
+  - reserves
+  - credit_channel
+  - limited_participation
+
+model:
+  class: "structural_var"
+  prior: null                       # classical OLS VAR, eq. (2), p. 17
+  variables:
+    # Core block (p. 18, left column): "The vector Z_t always includes at
+    # least the following variables:"
+    endogenous:
+      - {name: "real GDP (Y)", proxy: "log real GDP; paper: Fed macroeconomic data bank (appendix p. 34, item 3); replication uses GDPC1 (FRED-QD)", transform: "log", role: "output"}
+      - {name: "GDP deflator (P)", proxy: "log GDP price deflator; paper: Fed macro data bank (p. 34); replication uses GDPCTPI (FRED-QD)", transform: "log", role: "price level"}
+      - name: "sensitive commodity prices (PCOM)"
+        proxy: >
+          log of "an index of sensitive commodity prices" (p. 18). Source NOT
+          stated in the data appendix (p. 34); flagged. Footnote 11 (p. 21)
+          reports similar results with the Journal of Commerce index and the
+          PPI for crude materials. Replication substitutes log PPIACO
+          (FRED-QD), the same substitution as this repository's CEE 1999 entry.
+        transform: "log"
+        role: "supply-shock / expected-inflation control; resolves the price puzzle (p. 18)"
+      - {name: "federal funds rate (FF)", proxy: "FEDFUNDS (FRED-QD), quarterly average, percent annual rate", transform: "level", role: "policy instrument #1 (p. 18)"}
+      - name: "negative log nonborrowed reserves (NBRD)"
+        proxy: >
+          MINUS the log of nonborrowed reserves (p. 18: "minus the log of
+          nonborrowed reserves (NBRD)"); the negation makes positive FF and
+          NBRD shocks BOTH contractionary. Underlying series is nonborrowed
+          reserves PLUS EXTENDED CREDIT from the Fed's macro data bank
+          (appendix p. 34, item 2); replication uses -log NONBORRES
+          (FRED-QD), which omits extended credit (a documented deviation).
+        transform: "neg_log"
+        role: "policy instrument #2"
+      - {name: "total reserves (TR)", proxy: "log total reserves; Fed macro data bank (p. 34); replication uses TOTRESNS (FRED-QD)", transform: "log", role: "reserves market quantity; borrowed-reserves buffer test"}
+      - name: "D_t (rotating 7th variable)"
+        proxy: >
+          "When we want to assess the effect of a monetary shock on some
+          other variable, D_t, that variable too is included in Z_t" (p. 18).
+          Used for: GOVSEC and M1 (Table 1, p. 20); EMPL, UNEMP, RSALES,
+          trade-sector profits, nonfinancial profits, MFG inventories
+          (Table 2, p. 21); the flow-of-funds aggregates BNET, BNET*, CNET,
+          CNET*, BASSETS, BLIAB, BSHORT, BLONG (Table 4, p. 26), household
+          HNET/HNET*/HASSET/HLIAB (Table 6, p. 29), and sectoral
+          FINET/FONET/GNET (Table 7, p. 31), each entering one at a time.
+        transform: "varies (logs for stocks; billions of 1987 dollars for FOFA flows)"
+        role: "variable of interest, one VAR per D_t (parameter-profligacy strategy; footnote 6, p. 18 notes shocks then differ slightly across VARs)"
+    exogenous: []
+    note: >
+      BENCHMARK system (Section II.B, p. 18): the SIX-variable VAR that
+      drops D_t: "six variable VARs that include only the price level,
+      commodity prices, output, nonborrowed reserves, the federal funds
+      rate and total reserves".
+  lags: 4                            # p. 18: "using 4 lags of the variables in the system (i.e., q = 4)"
+  frequency: "quarterly"             # p. 18
+
+identification:
+  method: "cholesky"
+  policy_shock_measures:
+    ff_policy_shock:
+      ordering: ["Y", "P", "PCOM", "FF", "NBRD", "TR", "D"]   # p. 18, right column (verbatim tuple)
+    nbrd_policy_shock:
+      ordering: ["Y", "P", "PCOM", "NBRD", "FF", "TR", "D"]   # p. 18, right column (verbatim tuple)
+    d_placement_exception: >
+      "On two occasions ... the variable D_t is an indicator of aggregate
+      production activity: the unemployment rate and the log of employment.
+      In those cases, we place D_t just before the policy variable in the
+      VAR." (p. 18). Production indicators must not respond
+      contemporaneously to the policy shock.
+  rationale: >
+    Policy rule S_t = psi(Omega_t) + sigma e_st (eq. 1, p. 17); the
+    information set Omega_t contains current Y, P, PCOM (variables ordered
+    before the policy instrument) plus q lags of everything; the policy
+    shock is the orthogonalised innovation to the policy instrument
+    (Cholesky, C lower triangular with unit-variance structural shocks,
+    eqs. 2-3, pp. 17-18). Positive FF and NBRD shocks are both
+    CONTRACTIONARY by construction: NBRD enters as minus log nonborrowed
+    reserves precisely "to facilitate comparisons between our two policy
+    shock measures" (p. 18). PCOM is included to avoid the price puzzle
+    (p. 18; resolution confirmed p. 21 and figure 4, p. 23).
+
+estimation:
+  estimator: "OLS VAR with constant (eq. 2, p. 17: A_0 intercept; no trend term appears)"
+  bands: >
+    +/- 1 standard error bands, Monte Carlo "described in Doan (1990),
+    example 10.1, using 500 draws from the estimated asymptotic
+    distribution of the VAR coefficients and the covariance matrix of the
+    innovations" (footnote 8, p. 19). Point estimates and standard errors
+    reported as the mean and s.d. across draws.
+  shock_size: "one standard deviation; table rows report the AVERAGE response over quarters 1-2 and 3-4 (note to Table 1, p. 20)"
+  reporting: "Figure 1 plots the centered three-quarter moving average of the shocks (p. 18)"
+
+sample:
+  start: "1960Q1"
+  end: "1992Q4"
+  notes: >
+    p. 18: "the VAR was estimated using quarterly data over the period
+    1960:Q1-1992:Q4, using 4 lags". AMBIGUITY (flagged): the text does not
+    say whether 1960Q1-1992Q4 is the raw data window (first regression
+    observation 1961Q1) or the regression sample (presample lags reaching
+    back to 1959Q1, RATS-style). The replication treats it as the data
+    window (132 obs, T_eff = 128), consistent with how this repository's CEE
+    1999 entry treats its sample statement. Flow of Funds data are the
+    initial release of 1993Q3 (December 8, 1993 vintage; appendix p. 34);
+    modern FRED-QD vintages differ.
+
+expected_results:
+  policy_shock_moments:
+    sigma_ff: "0.79% at an annual rate (p. 18); 0.58 excluding 1979Q4-1982Q4 (p. 19)"
+    sigma_nbrd: "1.61% (p. 18); 1.56 excluding 1979Q4-1982Q4 (p. 19). UNIT FLAG: 'at an annual rate' is unambiguous for FF (already an annualised rate) but the annualisation convention for the log-reserves shock is not spelled out."
+    correlation_ff_nbrd: "0.49 (p. 18)"
+  ff_contraction:                    # benchmark VAR + Table 1 (p. 20) / Table 2 (p. 21)
+    fed_funds_rate: "+0.821 avg over quarters 1-2, p = 0.000; stays up ~6 quarters (p. 19; Table 1)"
+    nonborrowed_reserves: "fall: NBRD response +0.751 (1-2Q avg, p = 0.000), Table 1"
+    total_reserves: "INSULATED initially: +0.014 (1-2Q avg, p = 0.911), eventually falls ~0.4% (p. 19; Table 1), as the Fed offsets via borrowed reserves"
+    govsec: "Fed holdings of government securities fall: -0.779 (1-2Q, p = 0.000), Table 1"
+    m1: "falls: -0.166 (1-2Q, p = 0.015), Table 1"
+    output: "DELAYED decline: -0.022 (1-2Q avg, p = 0.476) then -0.437 (3-4Q avg, p = 0.000), Table 2; 'after a delay of about two quarters ... sustained, statistically significant drop in GDP' (p. 21); FF shocks account for 29.744% of the 24-quarter-ahead FEV of Y (Table 2; text p. 23 says ~30%)"
+    employment: "falls with similar delay (-0.149 at 3-4Q, p = 0.009); unemployment rises (+0.087 at 3-4Q, p = 0.004), Table 2"
+    commodity_prices: "sharp persistent decline (-0.144 at 3-4Q, p = 0.003), Table 2 / p. 21"
+    gdp_deflator: "roughly FLAT for about a year, then declines (p. 21, figure 4 p. 23); conclusion states 'prices hardly change for three years' (p. 33). No price puzzle with PCOM included; WITHOUT PCOM the deflator RISES for over two years (price puzzle; p. 21, figure 4 right column)"
+    immediate_activity: "retail sales, retail profits, nonfinancial profits fall immediately; manufacturing inventories RISE immediately (p. 21, Table 2)"
+  nbrd_contraction:
+    qualitative: "with one exception inference is robust across the two measures (p. 21); responses less precisely estimated (Table 2); EXCEPTION: total reserves fall significantly on impact (-0.795 1-2Q avg, p = 0.000, Table 1), with roughly one-third of the shock transmitted contemporaneously to TR (p. 21)"
+    fevd: "NBRD shocks account for ~11/4/4/13% of 24-q FEV of Y/EMPL/UNEMP/RSALES vs ~30/17/5/35% for FF shocks (p. 23; Table 2)"
+  flow_of_funds_headline:
+    bnet: "net funds raised by business RISES for roughly 2-4 quarters after a contraction, then falls as the recession takes hold (p. 25; conclusion p. 33)"
+    magnitude: "BNET* rise averages ~6.1 billion 1987$ over quarters 1-2 after an FF shock = 16.6% of its 36.8 billion sample mean (p. 25); significant ~half a year"
+    composition: "initial rise is almost all SHORT-TERM liabilities: BLIAB +4.5bn 1987$ per quarter (1-2Q); BSHORT first-quarter response ~10bn = ~17% of its 58.9bn postwar mean; BASSETS response small/insignificant (p. 26, Table 4, figure 7)"
+    households: "HNET / HNET* show NO significant response for several quarters (limited participation; pp. 27, 29-30, Table 6), consistent with Christiano-Eichenbaum, Fuerst, Lucas limited-participation models (p. 30)"
+    government_foreign: "GNET falls significantly in the first two quarters after an FF shock then rises; FONET rises significantly in the second half-year (2.5-6.8bn 1987$) (pp. 30-31, Table 7)"
+  variance_contribution_flows: "FF shocks account for ~10-13% of the 24-q FEV of business net funds raised with PCOM included, 18-22% without (p. 25)"
+
+recommend_when:
+  - "user wants monetary policy shocks identified with BOTH funds-rate and reserves-based measures (robustness across instruments)"
+  - "question concerns credit-market / borrowing-lending responses to monetary policy (flow of funds, BNET/BSHORT)"
+  - "testing limited-participation model predictions (household portfolio sluggishness)"
+  - "US quarterly data, pre-ZLB sample"
+  - "recursive identification with a slow block {Y, P, PCOM} is acceptable"
+not_recommended_when:
+  - "nonborrowed-reserves operating procedures are irrelevant (post-1980s policy regimes, non-US economies)"
+  - "ZLB / unconventional-policy samples"
+  - "user rejects recursive identification"
+  - "flow-of-funds sectoral data unavailable and the FOFA questions are the object of interest"
+alternative_approaches:
+  - {id: "cee_1999_monetary_svar", reason: "same authors' later benchmark 7-variable system (adds M1 permanently, single ordering); use for the canonical transmission headline"}
+  - {id: "sims_1980_var", reason: "foundational money-output VAR without reserves detail"}
+  - {id: "uhlig_2005_sign_restrictions", reason: "agnostic identification if the recursive timing assumptions are contested"}
+  - {id: "gertler_karadi_2015_proxy_svar", reason: "modern external-instrument identification of monetary shocks; complements the credit-channel evidence"}
+  - {id: "romer_romer_2004_narrative_mp", reason: "narrative shock measure; the paper's FF/NBRD measures are the VAR-based alternative"}
+
+data_sources:                        # appendix, p. 34
+  vintage: "Flow of Funds initial release 1993Q3 (December 8, 1993); seasonally adjusted; FOFA flows converted to 1987 dollars with the GDP deflator"
+  macro_block: "FF, TR, M1, real GDP, GDP deflator, mfg inventories, profits: Federal Reserve macroeconomic data bank; NBR plus extended credit: same (item 2). EMPL (LP), UNEMP (LHUR), retail sales (RTRR): CITIBASE"
+  fofa_business: "BNET = -(line 10, table F.101); BASSETS = line 11; BLIAB = line 12; BLONG = lines 13+15+16+17; BEQUITY = line 13; BDEBT = lines 15+16+17; BSHORT = lines 18+19+20 (all table F.101)"
+  fofa_other: >
+    CNET = -(line 18, table F.104); Corp = log(lines 27+28+29, table
+    L.104); NCorp = log(lines 18+19, table L.103 [LOW CONFIDENCE: table
+    digit hard to read in scan]); GOVSEC = lines 7+9, table L.110; HNET /
+    HNET* per Table 3 rows; FINET composition spans tables F.107/F.108/
+    F.111/F.116 [LOW CONFIDENCE: exact line arithmetic partially
+    illegible in the scan at 300 dpi]; FONET = -(line 10, table F.109);
+    GNET = -(line 11, table F.105) - (line 14, table F.106); government
+    deficit and tax mnemonics (GGFNET, GGSNET, GGFEX, GGFPT, ...) from
+    CITIBASE. Large/small manufacturing firm series provided by Simon
+    Gilchrist (flows, cumulated to stocks from 1959Q1).
+  pdf_note: "footnote 22, p. 34: line numbers follow the Guide to the Flow of Funds Accounts (1993), not later Z.1 releases"
+
+implementation_notes:
+  replication: "scripts/replications/cee_1996_flow_of_funds/"
+  fred_qd_mapping: >
+    Y=GDPC1(log), P=GDPCTPI(log), PCOM=PPIACO(log, proxy; paper source
+    unstated), FF=FEDFUNDS(level), NBRD=-log(NONBORRES) (omits extended
+    credit), TR=TOTRESNS(log), M1=M1REAL x CPI (nominalised with the index FRED deflates M1SL by),
+    UNEMP=UNRATE(level). FOFA sector flows (BNET, HNET, ...) are NOT in
+    FRED-QD; the flow-of-funds half of the paper needs staged Z.1 data
+    (data/staging/), out of scope for the panel-only replication.
+  vintage_caveats: >
+    Modern chain-weighted GDPC1/GDPCTPI vs the paper's 1987-dollar
+    fixed-weight aggregates (December 1993 vintage); NONBORRES excludes
+    extended credit; PPIACO is a level index, not the smoothed
+    sensitive-commodities index. Quantitative table values are therefore
+    matched with generous tolerances; directional claims matched strictly.
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-11"
+  against: "REStat 78(1) published article (scanned PDF), field-by-field"
+  pdf_location: "papers/cee_1996_flow_of_funds.pdf"
+  notes: >
+    Known low-confidence items from scan legibility: (a) appendix item 13
+    NCorp table number (L.103 vs L.102); (b) appendix item 16 FINET line
+    arithmetic across F.107/F.108/F.111/F.116; (c) some Table 2
+    significance third decimals (point values corroborated by text
+    p. 23). Ambiguities in the text itself: (d) whether
+    "1960:Q1-1992:Q4" (p. 18) is the data window or the regression
+    sample; (e) the annualisation behind sigma_NBRD = 1.61%; (f) the PCOM
+    source, absent from the data appendix.

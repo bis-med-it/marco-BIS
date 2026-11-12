@@ -1,0 +1,82 @@
+# Replication config for Rigobon (2003) heteroskedasticity identification.
+# Original paper: emerging-market sovereign bond returns (Argentina,
+# Brazil, Mexico) with crisis vs tranquil regimes. We don't have that
+# data in FRED-MD, so we substitute:
+#   - US industrial production growth + 10Y yield + S&P 500 returns
+#   - NBER recessions as the high-variance regime
+#
+# This is a methodological demo, not a paper-faithful replication.
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/rigobon_2003_heteroskedasticity_id.yaml
+
+replication:
+  id: "rigobon_2003_heteroskedasticity_id"
+  title: "Rigobon (2003) Heteroskedasticity ID: US recessions as regime"
+  subtitle: "Three-variable VAR identified by NBER recession variance shift"
+
+# --- Data ---
+data:
+  source: "fred_md"
+  file: "data/fred_md/dataset.csv"
+  sample_start: "1959-01-01"
+  sample_end: "2024-12-31"
+  series:
+    - {name: "ip_growth", fred_code: "INDPRO",   transform: "dlog_x_100"}
+    - {name: "yield",     fred_code: "GS10",     transform: "level"}
+    - {name: "stock_ret", fred_code: "S&P 500",  transform: "dlog_x_100"}
+  variable_labels:
+    ip_growth: "Industrial Production Growth (%, m/m)"
+    yield:     "10-Year Treasury Yield"
+    stock_ret: "S&P 500 Return (%, m/m)"
+
+# --- Model ---
+model:
+  class: "var"
+  lags: 6
+  trend: "c"
+
+# --- Identification ---
+identification:
+  method: "heteroskedasticity"
+  # Regime indicator: 1 if month is in an NBER recession, 0 otherwise
+  # NBER recession periods (peak → trough, monthly):
+  #   1960-04 → 1961-02
+  #   1969-12 → 1970-11
+  #   1973-11 → 1975-03
+  #   1980-01 → 1980-07
+  #   1981-07 → 1982-11
+  #   1990-07 → 1991-03
+  #   2001-03 → 2001-11
+  #   2007-12 → 2009-06
+  #   2020-02 → 2020-04
+  nber_recessions:
+    - ["1960-04", "1961-02"]
+    - ["1969-12", "1970-11"]
+    - ["1973-11", "1975-03"]
+    - ["1980-01", "1980-07"]
+    - ["1981-07", "1982-11"]
+    - ["1990-07", "1991-03"]
+    - ["2001-03", "2001-11"]
+    - ["2007-12", "2009-06"]
+    - ["2020-02", "2020-04"]
+  shock_names: ["shock_1", "shock_2", "shock_3"]
+  # Sign normalisations (identification recovers H up to column permutation
+  # and sign; the library orders columns by ascending generalized eigenvalue). Each
+  # entry only pins the sign of that column's impact on the named variable;
+  # it does not assign an economic identity to the shock.
+  sign_normalization:
+    shock_1: {stock_ret: +1}
+    shock_2: {yield: +1}
+    shock_3: {ip_growth: +1}
+
+# --- IRF ---
+irf:
+  horizon: 24
+  bands: "parameter_draws"
+  n_draws: 1000
+  credible_intervals: [0.68, 0.90]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

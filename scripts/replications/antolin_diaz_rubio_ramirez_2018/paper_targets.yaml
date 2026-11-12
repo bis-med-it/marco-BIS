@@ -1,0 +1,71 @@
+# Paper-target validation for Antolin-Diaz & Rubio-Ramirez (2018) replication.
+#
+# ADRR 2018 (AER) extended sign-restricted SVAR identification with
+# NARRATIVE restrictions (sign-of-shock at specific historical dates).
+# The paper's monetary application (Section V, pp. 2821-2827) uses
+# Uhlig's six-variable VAR (12 lags, 1965M1-2007M11) and reports its
+# results graphically (Fig. 6): with the October 1979 restrictions,
+# output, left unrestricted, falls with high posterior probability. It
+# reports no band-width ratios and has no spread variable.
+#
+# This replication is a simpler 4-variable monetary VAR (see README), so
+# most targets below are structural checks or regression baselines from
+# an earlier run of this replication, not numbers from the paper. Each
+# target's location says which.
+
+targets:
+  - description: "Sample size (US monthly 1965-2019; 660 obs)"
+    location: "config.yaml (replication choice); ADRR's monetary application uses 1965M1-2007M11 (p. 2823); this replication extends to 2019"
+    paper_value: 660.0
+    paper_units: "count"
+    our_key: "n_obs"
+    tolerance: 12.0
+    tolerance_kind: "absolute"
+
+  - description: "VAR lag order (replication choice: p=6 monthly)"
+    location: "config.yaml; ADRR's monetary VAR uses 12 lags (p. 2823, fn 15)"
+    paper_value: 6.0
+    paper_units: "count"
+    our_key: "n_lags"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Max |eigenvalue| (near unit root with monthly log levels)"
+    location: "Stability diagnostic"
+    paper_value: 1.0
+    paper_units: "modulus"
+    our_key: "max_eig_modulus"
+    tolerance: 0.05
+    tolerance_kind: "absolute"
+
+  - description: "Sign-only acceptance rate (sanity check that restrictions are not too tight)"
+    location: "Baseline; replication pin under the single-candidate acceptance measure: ~21%"
+    paper_value: 0.21
+    paper_units: "rate"
+    our_key: "sign_only_acceptance_rate"
+    tolerance: 0.10
+    tolerance_kind: "absolute"
+
+  - description: "Narrative restriction massively reduces acceptance rate (ADRR headline)"
+    location: "ADRR 2018 §V, fn 16 (p. 2825): 931 of 10,116 baseline draws (about 9%) satisfy the narrative restrictions. NB: this replication's lib uses simple rejection; the paper's algorithm is an importance sampler (reweight+resample, §III)"
+    paper_value: 1.0
+    paper_units: "indicator (1.0 = narrative acceptance < 10% of sign-only)"
+    our_key: "narrative_substantially_filters"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Spread band ratio at h=0 (regression baseline from an earlier run of this replication; not a paper value)"
+    location: "Earlier run of this replication. ADRR show band changes graphically (Fig. 6, p. 2826) for a six-variable system with no spread variable; they give no band-width ratios"
+    paper_value: 0.46
+    paper_units: "ratio (narrative width / sign-only width)"
+    our_key: "spread_h0_band_ratio"
+    tolerance: 0.20
+    tolerance_kind: "absolute"
+
+  - description: "Spread band ratio at h=3 (regression baseline from an earlier run of this replication; not a paper value)"
+    location: "Earlier run of this replication; see the h=0 target"
+    paper_value: 0.52
+    paper_units: "ratio"
+    our_key: "spread_h3_band_ratio"
+    tolerance: 0.20
+    tolerance_kind: "absolute"

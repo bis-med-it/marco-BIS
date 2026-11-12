@@ -1,0 +1,58 @@
+# Analysis outputs (regenerate from scripts/)
+outputs/
+
+# Large data files (re-download via UPDATE.md instructions)
+data/fred_md/dataset.csv
+data/fred_qd/dataset.csv
+data/*/vintages/
+
+# Cache-on-fetch datasets, populated by lib.fetch_data on first run.
+# The data itself may be subject to copyright (BoE iadb, ECB SDMX, etc.).
+# Each user's local cache; the registry auto-registers them when fetched.
+data/registry.local.yaml
+data/uk_macro/
+data/jk_shocks/
+data/romer_romer_shocks/
+
+# Staging area for user-staged data files (e.g., narrative shock CSVs that
+# aren't on a stable public URL; see scripts/replications/romer_romer_2004_narrative_mp/).
+data/staging/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# R
+.Rhistory
+.RData
+
+# OS
+.DS_Store
+Thumbs.db
+
+# API keys (never commit)
+.env
+
+# Source-paper PDFs staged for Mode B replication.
+# Published papers often have copyright restrictions; force-add (git add -f)
+# specific PDFs that are public-domain if you want them committed.
+papers/**/*.pdf
+papers/**/*.djvu
+papers/**/*.epub
+
+# Local-only cross-validation harness (development record lives in
+# DEVELOPMENT.md §"Independent cross-checks"; the harness needs MATLAB + a GPL toolbox and is
+# not distributed)
+scripts/tools/crossval/
+
+# Session-local tool-promotion queue (see skills/research-log/SKILL.md)
+skills/research-log/tools_to_promote.yaml
+
+# Claude Code session state / worktrees (may contain unpublished work)
+.claude/
+
+# Stray local data files at the data/ root (registered datasets live in data/<id>/)
+data/*.xlsx
+data/*/fred_*[0-9].csv

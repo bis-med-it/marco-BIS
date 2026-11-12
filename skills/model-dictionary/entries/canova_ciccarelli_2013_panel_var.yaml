@@ -1,0 +1,185 @@
+id: "canova_ciccarelli_2013_panel_var"
+citation:
+  authors: "Canova, Ciccarelli"
+  year: 2013
+  title: "Panel Vector Autoregressive Models: A Survey"
+  journal: "Advances in Econometrics (Emerald) / ECB Working Paper Series"
+  volume: "32"
+  number: "ECB WP 1507"
+  pages: "205-246 (Emerald)"
+  notes: >
+    Chapter in 'VAR Models in Macroeconomics — New Developments and
+    Applications: Essays in Honor of Christopher A. Sims' (Fomby,
+    Kilian & Murphy, eds.), Advances in Econometrics vol. 32. The ECB
+    WP acknowledgements say "Prepared for Advances in Econometrics,
+    volume 31" (the chapter appeared in vol. 32).
+
+research_questions:
+  - "joint dynamics across countries / regions / sectors / firms"
+  - "cross-unit interdependence and spillovers in macro panels"
+  - "shrinkage and pooling across heterogeneous units in VAR estimation"
+  - "panel VAR estimation with limited time-series per unit"
+  - "exchangeable / hierarchical priors for heterogeneous cross-sections"
+tags:
+  - panel_var
+  - cross_country
+  - heterogeneity
+  - pooling
+  - exchangeable_prior
+  - bayesian_hierarchical
+  - survey
+  - canonical
+
+model:
+  class: "panel_var"
+  prior: "varies by estimation method (OLS, pooled, partial-pooled, exchangeable)"
+  variables:
+    endogenous:
+      # Survey covers the full family; common empirical applications:
+      country_application:
+        variables:
+          - {name: "real activity (IPI or GDP)", role: "real activity per unit"}
+          - {name: "prices (CPI or PCE)", role: "prices per unit"}
+          - {name: "long rate (10Y)", role: "long-term interest rate per unit"}
+          - {name: "short rate (policy or 3M)", role: "short-term interest rate per unit"}
+        note: "Typical 4-variable system per country"
+      bank_application:
+        variables:
+          - {name: "lending rate", role: "asset-side return per bank"}
+          - {name: "deposit rate", role: "liability-side cost per bank"}
+    exogenous: []
+    panel_structure:
+      cross_section_dimension: "N units (countries, banks, sectors, firms)"
+      time_dimension: "T periods per unit"
+      typical_use: "small-T, moderate-N (countries) or moderate-T, large-N (banks/firms)"
+  lags: "2-4 typical for monthly (parametric guidance: the survey contains NO lag-selection treatment; its only lag-length remark is that marginalising units out requires 'a VAR(p) with p generally large', p. 43)"
+  frequency: "any; monthly common for macro panels"
+  distinguishing_features: >
+    The survey's organising taxonomy (p. 8) sets out what separates macro
+    panel VARs from micro panel VARs (Holtz-Eakin et al. 1988, where
+    interdependencies are disregarded and homogeneity imposed):
+      (1) DYNAMIC INTERDEPENDENCIES: lags of ALL units' variables
+          enter unit i's equations;
+      (2) STATIC INTERDEPENDENCIES: u_it correlated across units,
+          with structure on Sigma_u;
+      (3) CROSS-SECTIONAL HETEROGENEITY: unit-specific intercepts,
+          slopes and shock variances.
+
+estimation:
+  family_of_methods:
+    unit_by_unit_ols:
+      description: "Estimate each unit's VAR separately by OLS, with no cross-unit information sharing"
+      when_appropriate: "T per unit is large; units are very heterogeneous"
+    pooling:
+      description: "Constrain all units to share the same VAR coefficients; estimate one VAR on stacked data"
+      when_appropriate: "units are homogeneous; T per unit is small"
+    mean_group:
+      description: "Estimate unit-by-unit, then average coefficients across units"
+      when_appropriate: "moderate heterogeneity; want a representative-unit summary"
+    partial_pooling:
+      description: "Bayesian shrinkage toward a common mean via the random-coefficient / exchangeable prior delta_i ~ N(delta_bar, Sigma_v) (eq. 9, p. 15); the survey treats the exchangeable prior AS the Bayesian implementation of partial pooling (p. 16), not a separate method"
+      when_appropriate: "intermediate heterogeneity; Sigma_v -> infinity collapses to unit-by-unit OLS, an uninformative sample collapses to the prior mean (p. 18)"
+    exchangeable_prior:
+      description: "Variant: estimate delta_bar and Sigma_v from a training sample 'or from information contained in units left out from the cross-section' (p. 17), then shrink the remaining units toward it"
+      when_appropriate: "many similar units; want to exploit cross-section information without imposing strict pooling"
+    cross_sectional_factor_shrinkage:
+      description: >
+        The survey's signature approach (Canova-Ciccarelli 2004, 2009;
+        Sec. 3.2/Sec. 4.2): factor the coefficient VECTOR, delta = Xi_1
+        theta_1 + Xi_2 theta_2 + Xi_3 theta_3 + Xi_4 theta_4 + e, with
+        a factor common to all units/variables (dim s), unit-specific
+        factors (dim N), variable-specific (dim G) and lag-specific
+        (dim p1 < p) blocks (eq. 20, p. 21). This "transforms an
+        overparametrized panel VAR into a parsimonious SUR model, where
+        the regressors are averages of certain right-hand side VAR
+        variables" (p. 21), with WLI/CLI common-vs-unit indicators
+        (p. 22). Time variation: random-walk factors theta_t =
+        theta_{t-1} + eta_t (eqs. 31-32, pp. 26-27). Estimated by
+        Gibbs/MCMC (pp. 23, 27).
+      when_appropriate: "full interdependence + heterogeneity wanted but NGk parameters are infeasible; reduces estimation to s+N+G+p1 factors"
+    hierarchical_time_varying:
+      description: "Sec. 4.1 panel-type hierarchical prior: delta_it = delta_bar_i + lambda_t, i.e. exchangeable unit means plus an AR common time factor (eqs. 28-30, p. 25)"
+      when_appropriate: "heterogeneous units sharing a common time-varying component"
+    full_panel_var_with_interdependence:
+      description: "Estimate joint NG x NG VAR allowing cross-unit lag dependence (one country's variables affect another's), the survey's Sec. 3.2"
+      challenge: "parameter count explodes with N; requires shrinkage / factor structure / hierarchical priors (k = NGp coefficients per equation, p. 20)"
+
+identification:
+  options_covered_in_survey:
+    - "Cholesky within unit + block ordering across units"
+    - "sign restrictions on individual or group responses"
+    - "sign + RELATIVE-MAGNITUDE cross-sectional restrictions (De Graeve-Karas bank-run example: |dD_uninsured| > |dD_insured|; the survey calls it 'a very powerful identification device if the stratification employed is relevant', pp. 32-33)"
+    - "common factor identification for global vs idiosyncratic shocks (WLI/CLI, p. 22)"
+    - "conditional-forecast-difference IRFs for time-varying panel VARs (eq. 36, pp. 30-31)"
+  cross_unit_shock_propagation: >
+    Distinct from a single-unit VAR: panel VARs can separately identify
+    (i) own-unit shocks, (ii) other-unit shocks transmitted to this
+    unit, (iii) common (global) shocks affecting all units.
+
+sample:
+  notes: >
+    Survey covers many empirical applications; no single canonical
+    sample. Common settings:
+      - 4-10 countries, monthly, 1978-2010;
+      - 50+ banks/firms, monthly/quarterly, T=80-150;
+      - Regional panels (US states, EZ regions) with N=50ish.
+
+expected_results:
+  # The survey contains no empirical results, tables, figures or
+  # simulations.
+  methodology_messages:
+    pooling_vs_individual: "pooled estimators are inconsistent under dynamic heterogeneity while the mean-group estimator is consistent for the average effect (Pesaran-Smith logic, p. 15); the exchangeable prior trades off the two"
+    small_subsets: "bilateral/small-subset VARs that omit units contaminate the estimated dynamics, induce serial correlation, and make idiosyncratic shocks masquerade as common shocks (Sec. 6.5, pp. 41-43)"
+  related_literature_pointers:
+    # Topics the survey CITES, with findings belonging to the cited
+    # papers, not the survey:
+    cross_country: "G7 cycle similarities/convergence: Canova, Ciccarelli & Ortega (2007), cited p. 10"
+    cross_bank: "the survey's bank example is De Graeve-Karas BANK-RUN identification using deposits of insured vs uninsured banks (pp. 32-33), not lending-rate heterogeneity"
+  notes: >
+    As a survey, the value-add is methodological taxonomy and practical
+    guidance; there is no empirical headline to replicate.
+
+# NB: this is a METHOD-FAMILY entry for a survey, not one canonical
+# estimated model. Before execution, choose a coefficient structure,
+# covariance structure and identification; country/bank examples and
+# suggested lag orders are repository guidance, not the
+# survey's own empirical design.
+recommend_when:
+  - "user has a panel of multiple countries / banks / firms / regions"
+  - "research question involves cross-unit transmission or comparison"
+  - "T per unit is short and pooling is needed to share information"
+  - "heterogeneity matters (strict pooling is not credible)"
+  - "user wants to combine VAR dynamics with panel-data shrinkage logic"
+not_recommended_when:
+  - "single-unit analysis (use standard VAR/BVAR)"
+  - "extremely heterogeneous units where no cross-unit information sharing is credible"
+  - "very high-dimensional panel with no factor structure (consider DFM/FAVAR instead)"
+  - "user wants a single canonical specification (the survey covers a family, not one model)"
+alternative_approaches:
+  - {id: "bgr_2010_large_bvar", reason: "if cross-section is large, large-BVAR with shrinkage is a single-unit alternative"}
+  - {id: "bbe_2005_favar", reason: "FAVAR if cross-section is summarised by factors rather than modelled directly"}
+  - {id: "diebold_yilmaz_2012_connectedness", reason: "if the focus is spillover measurement rather than full multivariate dynamics"}
+  - {id: "primiceri_2005_tvpvar", reason: "TVP-VAR for time-varying dynamics within a single unit"}
+
+implementation_notes:
+  replication: "scripts/replications/canova_ciccarelli_2013_panel_var/"
+  data_alignment_with_repo: >
+    FRED-MD contains US macro variables but is single-country. For
+    multi-country panels, use IMF IFS, OECD MEI, or country-specific
+    FRED series (UNRATE, INDPRO, CPIAUCSL for US analogues).
+  dimensionality_warnings: >
+    Full unrestricted panel VAR with interdependence has
+    O((NG)^2 * p) parameters: for N=10 countries, G=4 variables,
+    p=4 lags this is 6400 parameters ("the total number of parameters
+    (NGk) ... easily exceeds the sample one has available", p. 20).
+    Always use shrinkage or factor structure for medium-N panels.
+    Conversely, do NOT escape the curse by dropping units: Sec. 6.5 warns
+    that omitting units contaminates dynamics and disguises
+    idiosyncratic shocks as common ones.
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-10"
+  against: "ECB WP 1507 PDF (55 pp.), field-by-field"
+  pdf_location: "papers/canova_ciccarelli_2013_panel_var.pdf"
+

@@ -1,0 +1,85 @@
+# Replication config for Antolín-Díaz & Rubio-Ramírez (2018) "Narrative
+# Sign Restrictions for SVARs" (AER 108, 2802-2829).
+#
+# Demonstrates the ADRR method: standard sign restrictions augmented with
+# narrative restrictions at specific historical dates. The paper's headline
+# application is the global oil market: supply, demand, and inventory shocks
+# identified by sign restrictions PLUS narrative information about known
+# episodes (e.g., the Iranian revolution Dec 1978-Jan 1979, the Iran-Iraq war
+# Sep-Oct 1980, the Gulf War Aug 1990). NOTE: the paper EXCLUDES
+# the Oct 1973 OAPEC embargo as contested / possibly endogenous (p. 2814-2815).
+#
+# This replication uses a simplified monetary-policy VAR instead, with
+# narrative restrictions tied to the Volcker tightening (October 1979) and a
+# late-Greenspan tightening (May 2000). The methodology is variable-agnostic;
+# the paper's contribution is the algorithm (an importance sampler, ADRR §III).
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/antolin_diaz_rubio_ramirez_2018.yaml
+
+replication:
+  id: "antolin_diaz_rubio_ramirez_2018"
+  title: "Antolín-Díaz & Rubio-Ramírez (2018) Narrative Sign Restrictions"
+  subtitle: "Monetary policy shock identification with narrative information"
+
+# --- Data --- US monthly CEE-style monetary VAR
+data:
+  source: "fred_md"
+  sample_start: "1965-01-01"
+  sample_end: "2019-12-31"
+
+  series:
+    - {name: "ip",        fred_code: "INDPRO",   role: "output"}
+    - {name: "cpi",       fred_code: "CPIAUCSL", role: "prices"}
+    - {name: "ffr",       fred_code: "FEDFUNDS", role: "policy rate"}
+    - {name: "spread",    fred_code: "GS10",     role: "long-term yield"}
+
+  transforms:
+    ip:     "log"
+    cpi:    "log"
+    ffr:    "level"
+    spread: "level"
+
+  variable_order: ["ip", "cpi", "ffr", "spread"]
+
+# --- Model: VAR ---
+model:
+  class: "var"
+  lags: 6
+  trend: "c"
+
+# --- Identification: sign + narrative ---
+identification:
+  method: "narrative_sign_restrictions"
+  horizon: 24                              # IRF horizon (months)
+
+  # Standard sign restrictions for a contractionary monetary policy shock:
+  # FFR rises on impact, prices fall, output falls.
+  sign_restrictions:
+    monetary_policy_shock:
+      ip: -1
+      cpi: -1
+      ffr: +1
+  restriction_horizons: 1                  # only on impact
+
+  # Narrative restrictions (ADRR 2018 §II):
+  #   Type 1 (sign-of-shock): structural shock at date t has the named sign.
+  #   Type 2 (historical-contribution): structural shock was the largest
+  #     contributor to a named variable's value at date t.
+  narrative_restrictions:
+    # Type 1: sharply contractionary MP shocks at well-known dates
+    - {date: "1979-10-01", sign: +1, type: "sign"}    # Volcker tightening (Oct 1979)
+    - {date: "2000-05-01", sign: +1, type: "sign"}    # late-Greenspan tightening (May 2000)
+    # Type 2: at the Volcker tightening, the MP shock was the LARGEST
+    # POSITIVE contributor to the federal funds rate path. This is the
+    # archetypal Type 2 claim, since Volcker's policy move *defines* the FFR
+    # spike of 1979-1982.
+    - {date: "1979-10-01", type: "largest_positive_contributor", variable: "ffr"}
+
+  # Sampler settings
+  target_accepted: 1000
+  max_rotations: 50000
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

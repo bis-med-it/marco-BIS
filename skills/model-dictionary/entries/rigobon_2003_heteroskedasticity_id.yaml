@@ -1,0 +1,227 @@
+id: "rigobon_2003_heteroskedasticity_id"
+citation:
+  authors: "Rigobon"
+  year: 2003
+  title: "Identification Through Heteroskedasticity"
+  journal: "Review of Economics and Statistics"
+  volume: "85"
+  issue: "4"
+  pages: "777-792"
+
+research_questions:
+  - "identifying structural shocks when standard restrictions are unavailable"
+  - "measuring contemporaneous spillovers / contagion across markets"
+  - "structural identification when sign/zero restrictions are not credible"
+  - "exploiting regime shifts in shock variances for identification"
+  - "simultaneous-equation systems without exclusion restrictions"
+tags:
+  - structural_identification
+  - heteroskedasticity
+  - regime_shifts
+  - simultaneous_equations
+  - financial_markets
+  - contagion
+  - emerging_markets
+  - canonical
+  - identification
+
+model:
+  class: "structural_var"
+  prior: null                  # baseline classical; Bayesian extensions exist (e.g., Lewis 2021)
+  variables:
+    endogenous:
+      # Application in the paper: daily J.P. Morgan EMBI+ STRIPPED YIELDS
+      # (relative to US duration-matched bonds, basis points, mainly Brady
+      # bonds), p. 784. The abstract says "returns" but the data section
+      # is authoritative. Baseline first-step VAR runs on LOG yields
+      # (p. 787); levels/differences/returns are robustness (p. 790).
+      - {name: "Argentina EMBI+ stripped yield", proxy: "J.P. Morgan EMBI+ Argentina", transform: "log (baseline)", role: "EM sovereign debt"}
+      - {name: "Brazil EMBI+ stripped yield", proxy: "J.P. Morgan EMBI+ Brazil", transform: "log (baseline)", role: "EM sovereign debt (excluded from the 1994 correlations, fn 9)"}
+      - {name: "Mexico EMBI+ stripped yield", proxy: "J.P. Morgan EMBI+ Mexico", transform: "log (baseline)", role: "EM sovereign debt"}
+    exogenous:
+      - {name: "US 10-year Treasury rate", role: "common external factor; enters eq. (18) contemporaneously and in lags (p. 785); dropped only in an unreported robustness check (p. 790)"}
+    note: >
+      The methodology is general (works for any structural VAR with at
+      least 2 variance regimes); the application is to 3 emerging-market
+      sovereign bond series. Many subsequent applications extend it to
+      monetary policy, financial conditions, oil markets, etc.
+  lags: >
+    theory sections are static; the APPLICATION is dynamic: 'first, a VAR is
+    run on the log of the yields to remove the effects of serial correlation
+    and of the variation in international interest rates' (p. 787; lag length
+    not reported), then regime covariances of the residuals identify the
+    contemporaneous system
+  frequency: "daily"           # daily EMBI+ stripped yields
+
+identification:
+  method: "heteroskedasticity"
+  framework: "Rigobon (2003), Sentana-Fiorentini (2001)"
+  rationale: >
+    A structural simultaneous-equation system (the paper writes
+    A x_t = Gamma z_t + eps_t with unit diagonal on A, eq. 11 p. 782)
+    cannot be identified from one reduced-form covariance: too few
+    moments relative to parameters. If the structural-shock variances
+    differ across S observable regimes while A is constant, each regime
+    adds a covariance matrix. WITHOUT common shocks (K = 0), S = 2
+    regimes identify the system "independently of the number of
+    endogenous variables" (p. 782); S > 2 over-identifies and makes A
+    testable (p. 781). WITH K common unobservable shocks (Prop 2,
+    p. 782): S >= 2(N+K)(N-1) / (N^2-N-2K), needing the catch-up
+    condition N^2-N-2K > 0 plus the separate rank condition (counting
+    moments is necessary, not sufficient). Example: N = 2, K = 1 makes
+    the denominator zero, so no number of regimes satisfies the order
+    condition. The paper's application has N = 3, K = 1, so "at least
+    four regimes are needed" (p. 786).
+  rank_condition: >
+    In the BIVARIATE case identification fails iff the regime
+    covariance matrices are PROPORTIONAL: "the heteroskedasticity does
+    not identify the system if the relative variances are constant
+    across regimes" (p. 780); the testable bivariate statistic is
+    omega11,1*omega12,2 - omega11,2*omega12,1 = 0, preferred over the
+    determinant for small-sample behaviour (Appendix, p. 791). In
+    higher dimensions non-proportionality of the full matrices is NOT
+    sufficient: identification needs pairwise-distinct relative-variance
+    profiles across shocks (e.g. Sigma_1 = I_3 vs Sigma_2 =
+    diag(2,2,3) are not proportional, yet rotations of the first two
+    shocks remain observationally equivalent).
+  regime_definition: >
+    NOT a binary split: the paper defines TWELVE windows, six tranquil
+    plus six event windows (Table 2, p. 786): Mexican crisis
+    1994-12-19 to 1995-03-01; Asian 1997-06-01 to 1998-01-31; Russian
+    1998-08-01 to 1998-10-31 ("lasted until the end of October after
+    the LTCM rescue"); Brazilian devaluation 1999-01-13 to 1999-02-28;
+    Mexico's investment-grade upgrade 2000-03-01 to 2000-05-31 (a
+    LOW-volatility good-news regime); Argentine crisis 2000-10-01 to
+    2001-12-31. Estimation proceeds over NESTED subsamples
+    (MA / MAR / MARB / MARBU / MARBUA, p. 787); over-identification
+    and the stability test come from ADDING regimes. Windows must be
+    motivated by economic events, not chosen ex post; Props 3-4
+    (pp. 783-784) show estimates stay consistent under misdated or
+    under-counted regimes provided the rank condition still holds
+    (confirmed by the shortened-windows exercise, max F = 0.32,
+    Tables 6-7, p. 788).
+  key_assumption: >
+    The structural matrix A is INVARIANT across regimes; only the
+    structural shock variances change. This is the testable null when
+    R > 2.
+  algorithm: >
+    1. (Application) Run a first-step VAR on log yields with the US
+       10-year rate; take residuals (p. 787).
+    2. Estimate the reduced-form covariance Sigma_s in each regime
+       window.
+    3. Solve the covariance moments jointly across regimes. This is the
+       K = 0 special case: H Omega_s H' = Sigma_s for a regime-invariant
+       impact matrix H and diagonal Omega_s (the paper's own notation
+       has unit-diagonal A with A Sigma A' moments, eq. 15, equivalent
+       up to normalisation; bivariate count: 6 moments vs 6 unknowns,
+       solutions identified up to the row permutation (alpha, beta) <->
+       (1/beta, 1/alpha), pp. 779-780). The paper's sovereign-yield
+       application has a LATENT COMMON SHOCK (K = 1): its moments are
+       A Sigma_s A' = Gamma Omega_z,s Gamma' + Omega_eps,s (eqs. 18-19,
+       pp. 785-786), not the K = 0 equation.
+    4. Inference: GMM on the covariance moments (fn 7) with BOOTSTRAP
+       standard errors (residuals resampled within regime, 500
+       replications) and numerically computed F-tests that preserve
+       shared draws (pp. 787-788).
+
+sample:
+  start: "varies; the application uses daily EMBI+ stripped yields, Jan 1994 to Dec 2001"
+  end: "varies"
+  notes: >
+    Sample needs to span ENOUGH variance-regime change to identify.
+    The EM bond application uses twelve tranquil and event windows
+    (Table 2, p. 786). For monetary or business-cycle applications,
+    regimes are typically defined by NBER recession dating, ZLB
+    binding, financial-stress index thresholds, etc.
+
+expected_results:
+  contagion_application:
+    contemporaneous_pass_through: >
+      the one robust spillover is MEXICO -> ARGENTINA: significant in all five
+      nested subsamples (0.30-0.41, t up to 6.35; Table 4, p. 787). Into
+      Mexico there is only one significant coefficient (p. 788). 'Strong
+      linkages among Argentina, Brazil, and Mexico, even after controlling for
+      common shocks' (p. 790), but NOT significant in both directions for any
+      pair.
+    asymmetry: >
+      Brazil -> Argentina is NEVER significant ('the estimates from Brazil are
+      not statistically different from 0 (in all five subsamples)', p. 787;
+      point estimate rises to ~0.3 once the Brazilian devaluation is included,
+      still insignificant); Argentina -> Brazil IS significant in MAR (0.396,
+      t=2.74) and MARBUA (0.231, t=5.17).
+    crisis_vs_tranquil_variances: >
+      reduced-form variance changes by window (Table 3, p. 786): Mexican
+      crisis ~35x for Mexico, Asian 3-5x, Russian >15x across all three,
+      Brazilian devaluation small (0.9-2.9x), Mexico's upgrade a volatility
+      REDUCTION (0.2-0.5x), Argentine crisis V(Arg) ~1938x. These are
+      reduced-form moments, not structural shock variances.
+    stability_and_overid: >
+      parameter stability NOT rejected through the Russian crisis (MA-MAR
+      F=1.42, p=18.6%), rejected once the Brazilian devaluation and later
+      windows enter (MARB F=2.82, p=0.45%; full sample F=8.17), consistent
+      with post-1999 decoupling; the no-common-shock specification is
+      overwhelmingly rejected (F=64-369, p~0) (Table 5, p. 788). Common-shock
+      loadings: normalised to 1 on Argentina, estimated NEGATIVE for
+      Brazil/Mexico ('flight to quality', fn 12, p. 788).
+  general_method:
+    over_identification: "with R > 2 regimes, the over-identifying restrictions test the invariance of A, a key falsification check"
+    weak_identification: >
+      if regime covariances are close to PROPORTIONAL, identification is weak
+      even when variances move a lot. Lewis (REStat, 'Robust Inference in
+      Models Identified via Heteroskedasticity') provides the formal weak-ID
+      F-test; the lib's
+      flag (minimum pairwise separation of the variance ratios on the log
+      scale, invariant to regime relabelling) is a heuristic
+  notes: >
+    The paper's contribution is methodological: a way to identify
+    structural systems when neither sign restrictions nor exclusion
+    restrictions are defensible. The empirical application is a
+    proof of concept showing identification works in a setting
+    where contemporaneous spillovers are the object of interest.
+
+recommend_when:
+  - "user wants structural identification but rejects Cholesky/sign/long-run restrictions"
+  - "data exhibit clear variance shifts (crisis vs tranquil, ZLB vs non-ZLB, recession vs expansion)"
+  - "research question is about contemporaneous spillovers/contagion"
+  - "sample includes observable, exogenous regime shifts (financial crises, policy regime changes)"
+  - "user wants a falsification test on the structural model (over-identification with R > 2)"
+not_recommended_when:
+  - "regime covariance matrices are (near-)proportional: variances can change a lot and still not identify (the rank condition is about RELATIVE variances, p. 780)"
+  - "regime boundaries are not externally observable (ex-post regime choice biases identification)"
+  - "user is unwilling to assume A is regime-invariant"
+  - "very small sample within each regime (covariance matrices poorly estimated)"
+  - "user wants point-identified structural shocks via a well-established convention (use CEE-style Cholesky instead)"
+alternative_approaches:
+  - {id: "cee_1999_monetary_svar", reason: "Cholesky identification when recursive ordering is acceptable"}
+  - {id: "uhlig_2005_sign_restrictions", reason: "sign restrictions when theory provides directional priors"}
+  - {id: "gertler_karadi_2015_proxy_svar", reason: "external-instrument identification when an HF surprise is available"}
+  - {id: "antolin_diaz_rubio_ramirez_2018", reason: "narrative restrictions sharpen identification using historical episodes"}
+
+implementation_notes:
+  replication: "scripts/replications/rigobon_2003_heteroskedasticity_id/"
+  recommended_external_implementations: >
+    For a clean Rigobon-style application:
+      - Lewis (2021, REStud, "Identifying Shocks via Time-Varying
+        Volatility"): point-identification from continuous volatility
+        variation; Lewis (REStat, "Robust Inference in Models
+        Identified via Heteroskedasticity"): weak-ID F-test and robust
+        inference.
+      - Brunnermeier, Palia, Sastry & Sims (2021, AER, "Feedbacks:
+        Financial Markets and Economic Activity"): US application of
+        heteroskedasticity-based SVAR identification.
+      - R: the 'svars' package's id.cv (changes in volatility)
+        implements the Rigobon estimator directly.
+  data_requirements: >
+    Needs a sample spanning two or more variance regimes with externally
+    motivated regime boundaries. Daily/weekly financial data are
+    well-suited; monthly macro data require longer samples to span
+    crisis vs non-crisis.
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-10"
+  against: "REStat 85(4) published PDF, field-by-field"
+  pdf_location: "papers/rigobon_2003_heteroskedasticity_id.pdf"
+  notes: >
+    The application's data run from Jan 1994 to Dec 2001.
+

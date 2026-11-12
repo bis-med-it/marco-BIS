@@ -1,0 +1,99 @@
+id: "jorda_2005_lp"
+citation:
+  authors: "Jordà"
+  year: 2005
+  title: "Estimation and Inference of Impulse Responses by Local Projections"
+  journal: "American Economic Review"
+  volume: "95"
+  pages: "161-182"
+
+research_questions:
+  - "robust impulse response estimation"
+  - "alternative to VAR for impulse responses"
+  - "nonlinear impulse responses"
+  - "state-dependent effects"
+tags:
+  - local_projections
+  - impulse_responses
+  - robust
+  - foundational
+  - nonlinear
+
+model:
+  class: "lp"
+  prior: null
+  variables:
+    # LP is a general method; the variable set is not fixed. Jordà's empirical
+    # illustration (p. 175) is a single MONETARY example: the output gap (real
+    # GDP vs CBO potential), GDP-deflator inflation, and the federal funds rate
+    # -- shown with both linear and cubic (nonlinear) projections.
+    endogenous:
+      - {name: "varies", role: "method is general; Jordà's illustration is a 3-var monetary system (output gap, inflation, FFR)"}
+    exogenous: []
+  lags: "included as controls; typically matching the VAR lag order (Jordà uses VAR(4) on quarterly data, p. 175)"
+  frequency: "quarterly or monthly (Jordà's example: quarterly, 1955:I-2003:I)"
+
+identification:
+  method: "varies"    # LP takes either recursive (Cholesky ordering on controls) or IV identification; see rationale
+  rationale: >
+    LP is an estimation method, not an identification strategy. It can use
+    the same identification as a VAR (Cholesky ordering on controls) or
+    instrumental variables (LP-IV, developed further by Stock and Watson 2018).
+  notes: >
+    The key advantage (Jordà §I, p. 163): LP does not impose the
+    autoregressive structure of a VAR across horizons. A VAR iterates one set
+    of estimated dynamics forward, so misspecification of those dynamics
+    compounds with the horizon and biases the IRF at all horizons; LP
+    estimates each horizon by a separate direct projection and is therefore
+    far more robust to misspecification of the dynamics. The cost is
+    efficiency -- LP bands are wider, especially at long horizons.
+
+sample:
+  start: "varies"
+  end: "varies"
+  notes: >
+    Method is general; LP needs longer samples than VAR for equivalent
+    precision. Jordà's illustration uses quarterly US data 1955:I-2003:I
+    (p. 175).
+
+expected_results:
+  vs_var:
+    point_estimates: "similar to VAR if VAR is correctly specified"
+    confidence_bands: "wider than VAR, the cost of robustness"
+    at_long_horizons: "LP can be noisy; may need to truncate reported horizons"
+  notes: >
+    Repo guidance (not the paper's conclusion): LP/VAR agreement is
+    reassuring but does not establish correct specification; disagreement
+    is a prompt to investigate. Whether LP or the VAR is the primary
+    estimator is the researcher's call. Wider LP bands are a common
+    finite-sample trade-off, not a universal theorem.
+
+recommend_when:
+  - "robustness check against VAR impulse responses"
+  - "user suspects VAR lag order misspecification"
+  - "nonlinear or state-dependent responses are of interest"
+  - "external instrument is available (LP-IV)"
+  - "long sample available (LP needs more observations than VAR)"
+not_recommended_when:
+  - "short sample (LP is less efficient than correctly specified VAR)"
+  - "user needs full system dynamics (FEVD, historical decomposition)"
+  - "forecasting is the primary objective; LP is not a forecasting method"
+alternative_approaches:
+  - {id: "cee_1999_monetary_svar", reason: "VAR gives tighter estimates if dynamics are correctly specified"}
+  - {id: "uhlig_2005_sign_restrictions", reason: "alternative robustness via different identification"}
+
+implementation_notes:
+  replication: "scripts/replications/jorda_2005_lp/"
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-03"
+  against: "original paper (Jordà 2005, AER 95(1), 161-182)"
+  pdf_location: "papers/jorda_2005_lp.pdf"
+  notes: >
+    LP residuals are a moving average of the forecast errors, so the paper
+    uses HAC (Newey-West) standard errors (eq 2-3, p. 163); its illustration
+    orders gap, inflation, FFR. The replication is an LP-vs-VAR method demo
+    on a CEE-style 4-variable monetary spec, not Jordà's data; see the
+    replication README "Scope vs original paper".
+

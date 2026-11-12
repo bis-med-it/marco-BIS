@@ -1,0 +1,107 @@
+id: "auerbach_gorodnichenko_2012"
+citation:
+  authors: "Auerbach, Gorodnichenko"
+  year: 2012
+  title: "Measuring the Output Responses to Fiscal Policy"
+  journal: "American Economic Journal: Economic Policy"
+  volume: "4"
+  pages: "1-27"
+
+research_questions:
+  - "fiscal multiplier size"
+  - "state-dependent fiscal effects"
+  - "fiscal policy in recessions vs expansions"
+  - "nonlinear impulse responses"
+tags:
+  - fiscal_policy
+  - smooth_transition_var
+  - state_dependent
+  - nonlinear
+  - multiplier
+  - us_macro
+
+model:
+  # AG 2012's own method is a SMOOTH-TRANSITION VAR (STVAR), estimated by
+  # maximum likelihood via Chernozhukov-Hong (2003) MCMC (paper p. 3-5).
+  # Local projections appear NOWHERE in the paper. The framework has no STVAR
+  # estimator, so the paired replication substitutes a Ramey-Zubairy-style
+  # state-dependent local projection (documented in the replication README).
+  class: "stvar"
+  replication_method: "state_dependent_local_projection (Ramey-Zubairy 2018-style; substitute for AG's STVAR, which the lib does not implement)"
+  prior: null
+  variables:
+    # Cholesky order [G, T, y] (paper p. 4, 6): spending, then NET taxes, then GDP.
+    endogenous:
+      - {name: "government spending", transform: "log real (consumption+investment; federal+state+local)", role: "fiscal instrument"}
+      - {name: "net taxes", transform: "log real (direct+indirect taxes net of transfers)", role: "fiscal revenue (control)"}
+      - {name: "real GDP", transform: "log real (chained)", role: "output"}
+    exogenous: []
+  lags: "estimated in log levels to preserve cointegration; the replication uses 4 quarterly lags (AG do not state their lag count)"
+  frequency: "quarterly"
+
+identification:
+  method: "cholesky"   # Blanchard-Perotti timing, imposed within both STVAR regimes
+  ordering: ["government spending", "net taxes", "real GDP"]
+  rationale: >
+    Government spending is assumed not to respond contemporaneously to taxes or
+    output (decision and implementation lags) -- the Blanchard-Perotti (2002)
+    minimum-delay timing, with G ordered first. AG impose the same recursive
+    structure in both regimes within the smooth-transition VAR.
+  state_variable: "seven-quarter moving average of real output growth (paper p. 4-5)"
+  state_function: "logistic smooth transition: F(z) = exp(-gamma*z) / (1 + exp(-gamma*z)); positive z = expansion"
+  state_threshold: >
+    z normalised to zero mean, unit variance; gamma = 1.5, calibrated so the
+    economy spends ~20% of time in recession (recession defined as F(z)>0.8,
+    consistent with the NBER ~21% frequency since 1946; paper p. 5).
+
+sample:
+  start: "1947Q1"
+  end: "2008Q4"
+  notes: "postwar US; ends before large-scale post-GFC fiscal stimulus"
+
+expected_results:
+  # NB: multiplier ranges depend on the model variant (lag order, horizon,
+  # multiplier statistic); pin those before treating the ranges below as
+  # benchmarking targets; they are not universal across versions.
+  recession:
+    multiplier: "1.5-2.5 (large, above 1)"
+    notes: "fiscal stimulus is more effective when the economy is weak"
+  expansion:
+    multiplier: "0-0.5 (small, possibly insignificant)"
+    notes: "fiscal stimulus is less effective when the economy is at capacity"
+  linear:
+    multiplier: "0.5-1.0 (average across states)"
+  notes: >
+    The key finding (Table 1, p. 9): fiscal multipliers are state-dependent --
+    larger in recessions than expansions. AG's econometric contribution is the
+    smooth-transition VAR (STVAR), which lets BOTH the contemporaneous and the
+    dynamic responses differ by regime. (Cumulative Sigma-y/Sigma-G multipliers
+    in Table 1: ~2.24 recession / -0.33 expansion / 0.57 linear; the authors'
+    preferred prose ranges, p. 19, are ~1-1.5 recession / 0-0.5 expansion.)
+
+recommend_when:
+  - "user studies fiscal policy effects"
+  - "user suspects nonlinear or state-dependent responses"
+  - "user wants to estimate fiscal multipliers"
+  - "user asks whether effects differ in recessions vs expansions"
+not_recommended_when:
+  - "monetary policy is the focus (use CEE 1999 or Uhlig 2005)"
+  - "user wants a simple linear model"
+  - "short sample (state-dependent LP requires many observations)"
+alternative_approaches:
+  - {id: "jorda_2005_lp", reason: "linear LP as a simpler baseline"}
+  - {id: "blanchard_quah_1989", reason: "structural supply-demand decomposition"}
+
+implementation_notes:
+  replication: "scripts/replications/auerbach_gorodnichenko_2012/"
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-03"
+  against: "original paper (Auerbach & Gorodnichenko 2012, AEJ: Economic Policy 4(2), 1-27)"
+  pdf_location: "papers/auerbach_gorodnichenko_2012.pdf"
+  notes: >
+    The replication uses FRED-QD (1959-2008) and a state-dependent LP in
+    place of the STVAR. On that sample the regime dependence reverses sign
+    relative to AG's 1947-2008 headline; see the replication README.
+

@@ -1,0 +1,82 @@
+# Replication config for Lenza-Primiceri (2022) "How to Estimate a Vector
+# Autoregression after March 2020" (JAE 37(4), 688-699).
+#
+# Demonstrates the LP scaling approach: a BVAR fitted on a sample that
+# includes the 2020Q2 outliers, where COVID-era innovations are down-
+# weighted via a per-observation scale factor s_t. The transmission
+# mechanism (B matrix) stays unchanged; only the variance of innovations
+# is allowed to be larger during the pandemic.
+#
+# This replication compares three setups on the same data:
+#   1. BVAR with no COVID handling (parameters distorted by 2020Q2)
+#   2. BVAR with COVID observations dropped (comparator unaffected by the pandemic quarters)
+#   3. BVAR with LP scaling (all observations kept, COVID quarters down-weighted)
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/lenza_primiceri_2022_covid_var.yaml
+
+replication:
+  id: "lenza_primiceri_2022_covid_var"
+  title: "Lenza-Primiceri (2022) BVAR with COVID Scaling"
+  subtitle: "How to estimate a VAR after March 2020: scaled-innovation approach"
+
+# --- Data --- quarterly US macro, post-WWII through 2024
+data:
+  source: "fred_qd"
+  sample_start: "1960-01-01"
+  sample_end: "2024-12-31"
+
+  series:
+    - {name: "rgdp",     fred_code: "GDPC1",   role: "output"}
+    - {name: "deflator", fred_code: "GDPCTPI", role: "prices"}
+    - {name: "urate",    fred_code: "UNRATE",  role: "unemployment"}
+    - {name: "ffr",      fred_code: "FEDFUNDS", role: "monetary policy"}
+
+  transforms:
+    rgdp:     "log"
+    deflator: "log"
+    urate:    "level"
+    ffr:      "level"
+
+  variable_order: ["rgdp", "deflator", "urate", "ffr"]
+
+# --- Model: Minnesota BVAR ---
+model:
+  class: "bvar"
+  lags: 5                  # quarterly demo choice; the PAPER's illustration is monthly with 13 lags (p. 691)
+  trend: "c"
+
+  prior:
+    lambda_1: 0.2          # baseline tightness
+    lambda_2: 0.5
+    lambda_3: 1.0
+    lambda_4: 100.0
+    mu: 1.0
+    delta: 1.0
+
+# --- COVID scaling specification ---
+# LP's flexible parameterisation:
+#   s_{2020Q2} = s_{2020Q3} = s_{2020Q4} = s_bar
+#   s_{2021Q1} = 1 + (s_bar - 1) * rho^1
+#   s_{2021Q2} = 1 + (s_bar - 1) * rho^2
+#   ...decaying back to 1 with rate rho.
+# Pre-COVID and far-post-COVID: s_t = 1 (no scaling).
+#
+# This replication uses fixed demo values rather than joint estimation of
+# theta = [s_bar_0, s_bar_1, s_bar_2, rho] (Metropolis, App. A).
+covid_scaling:
+  s_bar: 5.0               # demo value; the PAPER's monthly posterior peaks are ~17 (Mar), ~65 (Apr), ~20 (May 2020), Fig 1 p. 692
+  rho: 0.8                 # decay rate (slow back to normal, over ~5 quarters)
+  start: "2020-04-01"      # 2020Q2 (first quarter of full pandemic impact)
+  plateau_end: "2020-10-01"  # 2020Q4 is still at s_bar; decay starts in 2021Q1
+
+# --- IRF computation ---
+irf:
+  horizon: 20
+  shock_var: "ffr"
+  bands: "parameter_draws"
+  n_draws: 1000
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

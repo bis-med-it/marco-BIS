@@ -1,0 +1,65 @@
+# Paper-target validation for Jordà (2005) LP replication.
+#
+# Jordà 2005 (AER) introduced Local Projections as a horizon-by-horizon
+# alternative to VAR-iterated IRFs. Headline (abstract, p. 161): LPs are
+# estimated by simple regressions, are more robust to misspecification,
+# allow simple analytic inference and accommodate nonlinear specifications.
+# LP and VAR impulse responses coincide only when the DGP is that VAR
+# (Sec. I.B, p. 165); in the application they show broad correspondence
+# with a few exceptions (Sec. IV, p. 176).
+#
+# Jordà's own caveat: LP impulse responses are less efficient than those
+# of a correctly specified VAR, but the loss is minor (Sec. III.A, Table 1,
+# pp. 171-172). Our OOS forecast pass (LP wins 3 of 16 cells on FRED-QD)
+# is our own exercise; the paper has no OOS forecast comparison and no
+# Diebold-Mariano tests, so the OOS counts below are replication
+# regression pins, not paper values.
+
+targets:
+  - description: "Number of variables (4-var CEE-style monetary VAR)"
+    location: "config.yaml: rgdp, deflator, commodity, ffr"
+    paper_value: 4.0
+    paper_units: "count"
+    our_key: "n_vars"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of OOS comparison cells (4 vars × 4 horizons)"
+    location: "This replication's OOS comparison table (replicate.py), horizons {1, 4, 8, 12}; Jordà (2005) has no OOS comparison"
+    paper_value: 16.0
+    paper_units: "count"
+    our_key: "n_oos_cells"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "LP-wins-against-VAR cell count (LP < 1.0 OOS RMSE ratio)"
+    location: "Replication regression pin (this run: 3/16); no paper counterpart. Related paper claim: LP impulse responses are less efficient than those of a correctly specified VAR, but the loss is small (Sec. III.A, Table 1, pp. 171-172)"
+    paper_value: 3.0
+    paper_units: "count"
+    our_key: "n_lp_wins"
+    tolerance: 3.0
+    tolerance_kind: "absolute"
+
+  - description: "DM-significant cell count (p<0.10): LP and VAR predictively differ"
+    location: "Replication regression pin (this run: 5/16; DM test on squared-error losses); Jordà (2005) reports no Diebold-Mariano tests"
+    paper_value: 5.0
+    paper_units: "count"
+    our_key: "n_dm_significant"
+    tolerance: 3.0
+    tolerance_kind: "absolute"
+
+  - description: "h=1 RMSE ratios equal 1.0 (LP at h=1 ≡ VAR at h=1; first-step LP = first-step VAR)"
+    location: "Mechanical identity: the one-step projection is the VAR equation itself (Jordà 2005 Sec. I.B, eqs. 10-12, p. 165; s = 0 in his timing)"
+    paper_value: 1.0
+    paper_units: "ratio"
+    our_key: "h1_ratio_avg"
+    tolerance: 0.02
+    tolerance_kind: "absolute"
+
+  - description: "VAR is stable (max|eig| < 1)"
+    location: "Own stability diagnostic, not a paper value"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "var_stable"
+    tolerance: 0.0
+    tolerance_kind: "absolute"

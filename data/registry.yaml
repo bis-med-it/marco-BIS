@@ -1,0 +1,60 @@
+datasets:
+- id: fred_md
+  name: FRED-MD Monthly Database
+  description: Monthly US macro variables; raw observations, with the source's
+    recommended transformation codes in transform_codes.csv (not applied)
+  source: McCracken and Ng (2016); Federal Reserve Bank of St. Louis
+  url: https://research.stlouisfed.org/econ/mccracken/fred-databases/
+  frequency: monthly
+  variables: 126   # nominal series count in the current vintage; see variables_actual (the value code relies on) below
+  sample_start: 1959-01
+  sample_end: updated monthly
+  last_updated: '2026-04-11'
+  vintage: 2026-03
+  transforms_applied: false
+  verified_by: automated quality check
+  path: data/fred_md/
+  observations: 806
+  variables_actual: 126
+  sample_start_actual: 1959-01
+  sample_end_actual: 2026-02
+  missing_pct: 1.0
+  covers:
+  - output and income
+  - labour market
+  - housing
+  - consumption and orders
+  - money and credit
+  - interest rates and spreads
+  - prices
+  - stock market
+  - exchange rates
+- id: fred_qd
+  name: FRED-QD Quarterly Database
+  description: Quarterly US macro variables; raw observations, with the source's
+    recommended transformation codes in transform_codes.csv (not applied)
+  source: McCracken and Ng (2020); Federal Reserve Bank of St. Louis
+  url: https://research.stlouisfed.org/econ/mccracken/fred-databases/
+  frequency: quarterly
+  variables: 248
+  sample_start: 1959Q1
+  sample_end: updated quarterly
+  last_updated: '2026-04-11'
+  vintage: 2026-03
+  transforms_applied: false
+  verified_by: automated quality check
+  path: data/fred_qd/
+  observations: 268
+  variables_actual: 245
+  sample_start_actual: 1959Q1
+  sample_end_actual: 2025Q4
+  missing_pct: 3.2
+  index_convention: "DatetimeIndex with end-of-quarter month (March, June, September,\
+    \ December) as the date. To merge with other quarterly sources that use start-of-quarter\
+    \ or generic quarterly periods, convert both to PeriodIndex('Q') first;\
+    \ pandas' default ``.resample(\"QS\").mean()`` produces start-of-quarter timestamps\
+    \ which will NOT align with FRED-QD and silently produce all-NaN merges.\n"
+  covers:
+  - all FRED-MD categories aggregated quarterly
+  - GDP components
+  - national accounts detail

@@ -1,0 +1,110 @@
+id: "blanchard_quah_1989"
+citation:
+  authors: "Blanchard, Quah"
+  year: 1989
+  title: "The Dynamic Effects of Aggregate Demand and Supply Disturbances"
+  journal: "American Economic Review"
+  volume: "79"
+  pages: "655-673"
+
+research_questions:
+  - "separating demand and supply shocks"
+  - "permanent vs transitory shocks to output"
+  - "long-run identification of structural shocks"
+  - "sources of business cycle fluctuations"
+tags:
+  - structural_var
+  - long_run_identification
+  - demand_supply
+  - us_macro
+  - foundational
+  - business_cycle
+
+model:
+  class: "structural_var"
+  prior: null
+  variables:
+    # Paper (p. 661, fn 5): first difference of log real GNP, and the SA
+    # unemployment rate for MALES age 20+ (chosen as a homogeneous labor
+    # group). The canonical replication proxies via FRED-QD: real GDP (GDPC1)
+    # growth and total UNRATE (male-20+ is not in FRED-QD).
+    endogenous:
+      - {name: "real GNP growth", transform: "dlog", role: "output growth"}
+      - {name: "unemployment rate (males 20+)", transform: "level", role: "real activity"}
+    exogenous: []
+  lags: 8
+  frequency: "quarterly"
+  data_treatment: >
+    Paper base case (p. 661): output growth demeaned with a 1974Q1 break (the
+    1973-74 productivity slowdown) and unemployment linearly detrended, then
+    the VAR. The replication uses BQ's "case (c)" (raw series plus a VAR
+    constant), one of three alternative treatments BQ report as giving
+    results qualitatively similar to the base case (p. 662). On the FRED-QD
+    proxy sample (1959Q1-1987Q4, total UNRATE, real GDP) the base-case
+    treatment flips the sign of the supply shock's permanent output effect,
+    and case (c) was adopted after that run, so the choice was made with
+    the result in view; report the base case alongside as a sensitivity. Shock sign is a
+    normalization, so matching an expected sign is not by itself a
+    selection criterion.
+
+identification:
+  method: "long_run"
+  restrictions:
+    supply_shock: "has permanent effect on output level (no restriction on long-run effect)"
+    demand_shock: "has NO permanent effect on output level (long-run multiplier = 0)"
+  rationale: >
+    The restriction that demand shocks cannot permanently affect output is
+    derived from standard macro theory: demand shifts move the economy along
+    the aggregate supply curve but do not shift potential output. Supply shocks
+    (technology, structural change) permanently alter the level of output.
+  implementation: >
+    Impose zero restriction on the cumulative impulse response of output to
+    the demand shock at infinite horizon. Operationally, this constrains the
+    long-run impact matrix to be lower triangular with supply shock first.
+
+sample:
+  start: "1950Q2"
+  end: "1987Q4"
+  notes: >
+    Paper sample 1950:2-1987:4 (p. 661). The FRED-QD-based canonical
+    replication is truncated to 1959Q1-1987Q4 (FRED-QD starts 1959Q1).
+
+expected_results:
+  supply_shock:
+    output: "permanent positive effect"
+    unemployment: "NO long-run effect; the paper assumes unemployment is stationary, so neither shock moves it permanently (p. 657). The estimated transient response initially RAISES unemployment, then reverses and dies out (pp. 662-663)."
+  demand_shock:
+    output: "temporary positive effect; returns to zero"
+    unemployment: "temporary decline; returns to baseline"
+  notes: >
+    Supply shocks explain most of output variance at long horizons.
+    Demand shocks explain most of unemployment variance at short horizons.
+    The hump-shaped output response to demand shocks peaks at ~4 quarters.
+
+recommend_when:
+  - "user wants to distinguish permanent from transitory shocks"
+  - "research question involves supply vs demand decomposition"
+  - "user needs long-run identification"
+  - "bivariate or small system"
+not_recommended_when:
+  - "user wants short-run structural identification (use Cholesky)"
+  - "long-run restrictions are controversial for the application"
+  - "more than 3-4 variables, where long-run identification becomes complex"
+alternative_approaches:
+  - {id: "sims_1980_var", reason: "short-run Cholesky identification"}
+  - {id: "uhlig_2005_sign_restrictions", reason: "sign restrictions as a middle ground"}
+
+implementation_notes:
+  replication: "scripts/replications/blanchard_quah_1989/"
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-03"
+  against: "original paper (Blanchard & Quah 1989, AER 79(4), 655-673)"
+  pdf_location: "papers/blanchard_quah_1989.pdf"
+  notes: >
+    Replication deviations (total UNRATE for the male-20+ rate, real GDP for
+    GNP, the 1959Q1-1987Q4 sample, case (c) data treatment) are documented
+    above and in the replication README. The replication does not reproduce
+    BQ's small initial rise of unemployment after a supply shock (p. 663).
+

@@ -1,0 +1,64 @@
+# Paper-target validation for Diebold-Yilmaz (2012) connectedness replication.
+#
+# DY 2009 defined the "spillover index" (share of forecast-error variance
+# attributable to cross-variable shocks); DY 2012 (IJF) added the
+# generalised FEVD and the directional measures.
+# Headline: spillovers vary widely over time and spike during financial
+# crises. The original paper uses daily Parkinson (1980) high-low
+# volatility on stocks/bonds/FX/commodities; this replication
+# substitutes monthly absolute log returns for stocks/FX/oil and
+# absolute yield changes for bonds as volatility proxies from FRED-MD.
+# That substitution makes the index LEVELS incomparable to the paper's:
+# the paper's anchors are total index = 12.6% (Table 2, p. 61) and a
+# rolling index that surges above 30% in 2008Q1/Q4 (p. 64). The
+# numeric targets below are therefore REPLICATION-BASELINE regression
+# values (pinning this script's own output), not paper values.
+
+targets:
+  - description: "Number of variables (4-asset volatility quartet)"
+    location: "DY 2012 §3: stock / bond / FX / commodity volatility"
+    paper_value: 4.0
+    paper_units: "count"
+    our_key: "n_vars"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "VAR is stable (max|eig| well below 1)"
+    location: "Replication-derived baseline (the paper assumes a covariance-stationary VAR, p. 58; no eigenvalue is reported)"
+    paper_value: 0.82
+    paper_units: "modulus"
+    our_key: "max_eig_modulus"
+    tolerance: 0.10
+    tolerance_kind: "absolute"
+
+  - description: "Full-sample total spillover index > 5% (substantial connectedness); replication baseline"
+    location: "Replication-derived (monthly proxy); the PAPER's value on its daily data is 12.6% (Table 2, §3.2, p. 61)"
+    paper_value: 9.5
+    paper_units: "percent"
+    our_key: "total_spillover_index"
+    tolerance: 5.0
+    tolerance_kind: "absolute"
+
+  - description: "Rolling-window max total spillover (GFC spike); replication baseline, and the 69% level is a by-product of the monthly proxy"
+    location: "Replication-derived; the PAPER's rolling index far exceeds 30% in the crisis (§3.3, p. 61) and 'jumped to above 30% twice, in the first and fourth quarters of 2008' (§3.5, p. 64); Fig. 2 (p. 61) axis caps at 35"
+    paper_value: 69.0
+    paper_units: "percent"
+    our_key: "rolling_max_spillover"
+    tolerance: 15.0
+    tolerance_kind: "absolute"
+
+  - description: "Rolling-window minimum spillover (calmest period); replication baseline"
+    location: "Replication-derived; the PAPER's rolling minimum is ~7.5% (June 2002, pp. 63-64; Fig. 2, p. 61)"
+    paper_value: 17.0
+    paper_units: "percent"
+    our_key: "rolling_min_spillover"
+    tolerance: 10.0
+    tolerance_kind: "absolute"
+
+  - description: "Peak spillover month is in 2008 or 2009 (GFC)"
+    location: "abstract + pp. 62-64: index surges in 2008Q1 (Bear Stearns, p. 62) and 2008Q4 (post-Lehman, p. 64)"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "peak_during_gfc"
+    tolerance: 0.0
+    tolerance_kind: "absolute"

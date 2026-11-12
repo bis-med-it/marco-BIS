@@ -1,0 +1,68 @@
+# Paper-target validation for Banbura-Modugno (2014) BDFM replication.
+#
+# BM 2014 (JAE) modified the EM algorithm (frequentist ML) to estimate
+# DFMs under ARBITRARY missing-data patterns, via selection matrices
+# W_t in the M-step; a Bayesian treatment is explicitly deferred to
+# future research (p. 150). This replication SUBSTITUTES Gibbs sampling
+# (lib.fit_dfm_bayesian), a documented deviation (see README). The
+# paper's headline is EM > Rubin-Thayer > Stock-Watson in Monte Carlo
+# trace R2 plus euro-area RMSFE gains over AR/mean benchmarks; the
+# headline below (Bayesian factor ~ PC factor on observed data) is the
+# REPLICATION's own sanity check, not a paper result.
+
+targets:
+  - description: "Sample size (599 monthly obs, 1970-2019)"
+    location: "config.yaml: FRED-MD post-1970"
+    paper_value: 599.0
+    paper_units: "count"
+    our_key: "n_obs"
+    tolerance: 12.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of variables in panel"
+    location: "config.yaml: 15-var info panel"
+    paper_value: 15.0
+    paper_units: "count"
+    our_key: "n_variables"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of factors"
+    location: "config.yaml: 3 factors"
+    paper_value: 3.0
+    paper_units: "count"
+    our_key: "n_factors"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Factor AR(1) is stable (max |eig| of Phi < 1)"
+    location: "Stationarity of the factor VAR"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "phi_stable"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Max |Phi eigenvalue| near unit root (typical for factor models on macro data)"
+    location: "Replication output: 0.994"
+    paper_value: 0.994
+    paper_units: "modulus"
+    our_key: "max_phi_eig"
+    tolerance: 0.05
+    tolerance_kind: "absolute"
+
+  - description: "Gibbs draws stored (config: 200 iter, 50 burn-in ⇒ 150)"
+    location: "config.yaml"
+    paper_value: 150.0
+    paper_units: "count"
+    our_key: "n_stored"
+    tolerance: 20.0
+    tolerance_kind: "absolute"
+
+  - description: "Maximum absolute correlation of the first Bayesian factor with any PC factor (no factor-space rotation)"
+    location: "Replication output (regression pin); loose paper analogue: Monte Carlo trace R2 of estimated vs true factors, Tables I-II, pp. 142-143"
+    paper_value: 0.93
+    paper_units: "|corr|"
+    our_key: "bayes_f1_pc_corr"
+    tolerance: 0.10
+    tolerance_kind: "absolute"

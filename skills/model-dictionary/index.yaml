@@ -1,0 +1,286 @@
+# Model dictionary index
+# Hand-maintained; tests/test_doc_consistency.py checks it against entries/.
+# Total entries: 30
+#
+# verified_status levels are defined in skills/model-dictionary/SKILL.md (Verification status).
+# verified.pdf_location in each entry records the local filename at
+# verification time; PDFs are not distributed (see papers/README.md).
+#
+# Verification is best-effort, not infallible. Treat "verified" as
+# "checked against the paper", not as a guarantee; report suspected errors.
+
+entries:
+
+  # --- VAR / BVAR ---
+
+  - id: "sims_1980_var"
+    tags: [monetary_policy, var, cholesky, us_macro, foundational]
+    questions: ["effect of monetary policy on output", "monetary policy transmission"]
+    model_class: "var"
+    variables: 6
+    frequency: "quarterly"
+    verified_status: "checked_against_paper"
+
+  - id: "litterman_1986_bvar"
+    tags: [bvar, minnesota_prior, forecasting, us_macro, foundational, shrinkage]
+    questions: ["macroeconomic forecasting", "improving VAR forecast accuracy"]
+    model_class: "bvar"
+    variables: 7
+    frequency: "quarterly"
+    verified_status: "checked_against_paper"
+
+  - id: "cee_1996_flow_of_funds"
+    tags: [monetary_policy, structural_var, cholesky, us_macro, flow_of_funds, reserves, credit_channel, limited_participation]
+    questions: ["effect of monetary policy shocks", "FF vs nonborrowed-reserves shock measures", "flow-of-funds response to monetary policy"]
+    model_class: "structural_var"
+    variables: 6
+    frequency: "quarterly"
+    verified_status: "checked_against_paper"
+
+  - id: "cee_1999_monetary_svar"
+    tags: [monetary_policy, structural_var, cholesky, us_macro, reserves, canonical]
+    questions: ["monetary policy transmission", "liquidity effect", "effect of monetary policy on prices"]
+    model_class: "structural_var"
+    variables: 7
+    frequency: "quarterly"
+    verified_status: "checked_against_paper"
+
+  - id: "kilian_2009_oil_svar"
+    tags: [oil, commodity_prices, energy, recursive_svar, cholesky, global_oil_market, us_macro, canonical, identification]
+    questions: ["oil supply vs demand shocks", "drivers of the real price of oil", "macro effects of oil shocks", "structural global oil-market VAR"]
+    model_class: "structural_var"
+    variables: 3
+    frequency: "monthly"
+    verified_status: "checked_against_paper"
+
+  - id: "glp_2015_prior_selection"
+    tags: [bvar, minnesota_prior, hyperparameter_selection, marginal_likelihood, forecasting, us_macro, benchmark]
+    questions: ["how to choose BVAR hyperparameters", "optimal shrinkage", "macroeconomic forecasting"]
+    model_class: "bvar"
+    variables: 3
+    frequency: "quarterly"
+    verified_status: "checked_against_paper"
+
+  - id: "bgr_2010_large_bvar"
+    tags: [bvar, large_systems, minnesota_prior, forecasting, us_macro, dimension_reduction]
+    questions: ["forecasting with many variables", "BVAR vs FAVAR", "scaling shrinkage"]
+    model_class: "bvar"
+    variables: 20   # paper uses four sizes: 3 / 7 / 20 / 131 (20 = MEDIUM)
+    frequency: "monthly"
+    verified_status: "checked_against_paper"
+
+  # --- Factor-augmented VAR ---
+
+  - id: "bbe_2005_favar"
+    tags: [monetary_policy, favar, factor_models, data_rich, us_macro, dimension_reduction, structural_identification, cholesky, canonical]
+    questions: ["effect of monetary policy on many variables", "data-rich monetary transmission", "resolving the price puzzle via factors", "IRFs for variables outside a small VAR"]
+    model_class: "favar"
+    variables: "~120 in X_t + 1 observed (FFR) + 3 latent factors"
+    frequency: "monthly"
+    verified_status: "checked_against_paper"
+
+  # --- Dynamic factor models ---
+
+  - id: "banbura_modugno_2014_bdfm"
+    tags: [dfm, missing_data, em_algorithm, maximum_likelihood, nowcasting, mixed_frequency, ragged_edge, euro_area, canonical, real_time]
+    questions: ["factor models with missing/ragged-edge data", "GDP nowcasting with publication lags", "DFM with mixed frequencies", "real-time factor extraction"]
+    model_class: "dfm"
+    variables: "25-50 typical (large macro panel)"
+    frequency: "mixed (monthly + quarterly)"
+    verified_status: "checked_against_paper"
+
+  # --- Panel VAR ---
+
+  - id: "canova_ciccarelli_2013_panel_var"
+    tags: [panel_var, cross_country, heterogeneity, pooling, exchangeable_prior, bayesian_hierarchical, survey, canonical]
+    questions: ["joint dynamics across countries or units", "cross-unit interdependence", "shrinkage in panel VAR", "exchangeable priors for heterogeneous panels"]
+    model_class: "panel_var"
+    variables: "varies (typically 2-4 per unit)"
+    frequency: "any"
+    verified_status: "checked_against_paper"
+
+  # --- Trend / cycle decomposition ---
+
+  - id: "hamilton_2018_filter"
+    tags: [trend_cycle, business_cycle, filter, detrending, hp_filter_critique, regression_filter, canonical, methodological]
+    questions: ["alternative to HP filter for detrending", "real-time cycle extraction", "trend-cycle decomposition", "credit gap and financial cycle measurement"]
+    model_class: "filter"
+    variables: "univariate (any series)"
+    frequency: "any"
+    verified_status: "checked_against_paper"
+
+  - id: "kamber_morley_wong_2018_bnf"
+    tags: [trend_cycle, output_gap, beveridge_nelson, signal_to_noise, autoregressive, real_time, reliable, hp_filter_critique, canonical, methodological]
+    questions: ["model-based output gap estimation", "Beveridge-Nelson filter with low SNR", "real-time output gap with small revisions", "alternative to HP filter with theory grounding"]
+    model_class: "filter"
+    variables: "univariate (typically log real GDP)"
+    frequency: "quarterly typical"
+    verified_status: "checked_against_paper"
+
+  # --- Conditional forecasts / scenario analysis ---
+
+  - id: "banbura_giannone_lenza_2015_conditional_forecasts"
+    tags: [conditional_forecasts, scenario_analysis, bvar, dfm, large_systems, kalman_filter, state_space, counterfactuals, euro_area, canonical, forecasting]
+    questions: ["conditional forecasts on future paths", "scenario analysis with VARs", "policy counterfactuals", "Kalman-smoother forecasts in large BVARs"]
+    model_class: "bvar"
+    variables: "26 in original; method scales to any (B)VAR/DFM"
+    frequency: "quarterly"
+    verified_status: "checked_against_paper"
+
+  # --- Mixed-frequency VAR / nowcasting ---
+
+  - id: "schorfheide_song_2015_mfvar"
+    tags: [mixed_frequency, bvar, mfvar, nowcasting, forecasting, state_space, minnesota_prior, us_macro, canonical, real_time]
+    questions: ["real-time forecasting with mixed-frequency data", "GDP nowcasting from monthly indicators", "MF-VAR vs quarterly VAR vs MIDAS", "Bayesian state-space mixed-frequency model"]
+    model_class: "mfvar"
+    variables: 11
+    frequency: "mixed (monthly + quarterly)"
+    verified_status: "checked_against_paper"
+
+  # --- Sign restrictions ---
+
+  - id: "uhlig_2005_sign_restrictions"
+    tags: [monetary_policy, sign_restrictions, agnostic, us_macro, identification, foundational]
+    questions: ["agnostic identification", "sign restriction identification", "does monetary policy affect output"]
+    model_class: "sign_var"
+    variables: 6
+    frequency: "monthly"
+    verified_status: "checked_against_paper"
+
+  - id: "antolin_diaz_rubio_ramirez_2018"
+    tags: [sign_restrictions, narrative, identification, oil_shocks, monetary_policy, us_macro]
+    questions: ["sharpening sign restrictions", "narrative identification", "oil supply shocks"]
+    model_class: "sign_var"
+    variables: "varies"
+    frequency: "monthly"
+    verified_status: "checked_against_paper"
+
+  # --- External instruments / proxy SVAR ---
+
+  - id: "gertler_karadi_2015_proxy_svar"
+    tags: [monetary_policy, proxy_svar, external_instruments, high_frequency_identification, credit_spreads, forward_guidance, us_macro, canonical, identification]
+    questions: ["HF-identified monetary shocks", "credit channel of monetary policy", "external-instrument identification", "monetary transmission at the ZLB"]
+    model_class: "structural_var"
+    variables: 4
+    frequency: "monthly"
+    verified_status: "checked_against_paper"
+
+  - id: "mertens_ravn_2013_tax_proxy_svar"
+    tags: [fiscal_policy, tax_shocks, proxy_svar, external_instruments, narrative, romer_romer_tax_narrative, us_macro, canonical, identification]
+    questions: ["effects of personal vs corporate tax shocks", "fiscal multiplier of tax cuts", "narrative-IV identification of tax shocks", "two-instrument proxy SVAR"]
+    model_class: "structural_var"
+    variables: 7
+    frequency: "quarterly"
+    verified_status: "checked_against_paper"
+
+  # --- Narrative identification ---
+
+  - id: "romer_romer_2004_narrative_mp"
+    tags: [monetary_policy, narrative_identification, fomc, fed_intentions, shock_series, us_macro, canonical, identification, foundational]
+    questions: ["narrative-identified monetary shocks", "exogenous monetary shock series", "purging Fed actions of forecasts", "real effects of intended monetary policy"]
+    model_class: "shock_series"
+    variables: "shock series + downstream small VAR/LP"
+    frequency: "monthly"
+    verified_status: "checked_against_paper"
+
+  # --- Heteroskedasticity-based identification ---
+
+  - id: "rigobon_2003_heteroskedasticity_id"
+    tags: [structural_identification, heteroskedasticity, regime_shifts, simultaneous_equations, financial_markets, contagion, emerging_markets, canonical, identification]
+    questions: ["structural identification without sign or zero restrictions", "measuring contemporaneous spillovers", "identification via regime variance shifts", "contagion in financial markets"]
+    model_class: "structural_var"
+    variables: 3
+    frequency: "daily"
+    verified_status: "checked_against_paper"
+
+  # --- COVID / outlier treatment in VARs ---
+
+  - id: "lenza_primiceri_2022_covid_var"
+    tags: [covid, outlier_treatment, bvar, heteroskedasticity, forecasting, variance_scaling, us_macro, canonical, pandemic, robust_estimation]
+    questions: ["estimating VARs through COVID", "handling extreme outliers", "BVAR forecast uncertainty through tail events", "should COVID observations be dropped"]
+    model_class: "bvar"
+    variables: "varies (medium BVAR illustration)"
+    frequency: "quarterly or monthly"
+    verified_status: "checked_against_paper"
+
+  # --- Non-Gaussian / higher-moment identification ---
+
+  - id: "lanne_meitz_saikkonen_2017_nongaussian_svar"
+    tags: [structural_identification, non_gaussian, independent_components, higher_moments, maximum_likelihood, canonical, identification, data_driven]
+    questions: ["SVAR identification via non-Gaussianity", "data-driven identification", "ICA for macroeconomic shocks", "point identification without sign or instrument restrictions"]
+    model_class: "structural_var"
+    variables: "varies"
+    frequency: "any"
+    verified_status: "checked_against_paper"
+
+  - id: "andrade_ferroni_melosi_2023_higher_moments"
+    tags: [structural_identification, higher_moments, non_gaussian, sign_restrictions, bayesian_svar, monetary_policy, sovereign_spreads, identification]
+    questions: ["sharpening sign-restricted SVAR via higher moments", "Bayesian higher-moment identification", "tighter IRF bands than sign-restrictions-only", "combining theoretical priors with empirical higher-moment evidence"]
+    model_class: "structural_var"
+    variables: 4
+    frequency: "monthly"
+    verified_status: "checked_against_paper"
+
+  # --- Local projections ---
+
+  - id: "jorda_2005_lp"
+    tags: [local_projections, impulse_responses, robust, foundational, nonlinear]
+    questions: ["robust impulse responses", "alternative to VAR", "nonlinear responses"]
+    model_class: "lp"
+    variables: "varies"
+    frequency: "varies"
+    verified_status: "checked_against_paper"
+
+  - id: "stock_watson_2018_lpiv"
+    tags: [local_projections, instrumental_variables, proxy_svar, causal_inference, identification]
+    questions: ["causal effects with external instruments", "LP-IV", "proxy SVAR"]
+    model_class: "lp"
+    variables: "varies"
+    frequency: "varies"
+    verified_status: "checked_against_paper"
+
+  - id: "auerbach_gorodnichenko_2012"
+    tags: [fiscal_policy, smooth_transition_var, state_dependent, nonlinear, multiplier, us_macro]
+    questions: ["fiscal multiplier", "state-dependent effects", "fiscal policy in recessions"]
+    model_class: "stvar"   # AG's method is a smooth-transition VAR; replication substitutes state-dependent LP
+    variables: 3
+    frequency: "quarterly"
+    verified_status: "checked_against_paper"
+
+  # --- Time-varying parameters ---
+
+  - id: "primiceri_2005_tvpvar"
+    tags: [tvp_var, stochastic_volatility, time_varying, monetary_policy, us_macro, foundational, great_moderation]
+    questions: ["has monetary transmission changed", "time-varying parameters", "Great Moderation"]
+    model_class: "tvp_var"
+    variables: 3
+    frequency: "quarterly"
+    verified_status: "checked_against_paper"
+
+  # --- Network connectedness / spillovers ---
+
+  - id: "diebold_yilmaz_2012_connectedness"
+    tags: [connectedness, spillovers, networks, volatility, generalised_variance_decomposition, pesaran_shin, financial_markets, rolling_window, canonical, forecasting]
+    questions: ["measuring volatility spillovers", "directional connectedness across markets", "time-varying contagion", "network structure of financial linkages"]
+    model_class: "var"
+    variables: 4
+    frequency: "daily"
+    verified_status: "checked_against_paper"
+
+  # --- Long-run identification ---
+
+  - id: "blanchard_quah_1989"
+    tags: [structural_var, long_run_identification, demand_supply, us_macro, foundational, business_cycle]
+    questions: ["demand vs supply shocks", "permanent vs transitory", "long-run identification"]
+    model_class: "structural_var"
+    variables: 2
+    frequency: "quarterly"
+    verified_status: "checked_against_paper"
+
+  - id: "gali_1999_technology_var"
+    tags: [technology_shocks, long_run_restrictions, structural_var, hours_productivity, rbc_critique, business_cycle, us_macro, canonical]
+    questions: ["do technology shocks explain aggregate fluctuations", "hours response to technology shocks", "conditional comovement of productivity and hours"]
+    model_class: "structural_var"
+    variables: 2
+    frequency: "quarterly"
+    verified_status: "checked_against_paper"

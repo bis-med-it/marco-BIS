@@ -1,0 +1,65 @@
+# Paper-target validation for Canova-Ciccarelli (2013) G4 panel VAR.
+#
+# The survey is methodology; there's no single empirical headline to
+# target. Targets here cover:
+#   (a) sensible data/structural quantities (number of units, total obs),
+#   (b) model stability (pooled + mean-group both stationary),
+#   (c) qualitative IRF signs to a monetary tightening shock.
+#
+# The survey (ECB WP 1507) contains no empirical application, tables or
+# figures. The G4 panel follows the BVAR_ toolbox's panel example (see
+# README). No target below is a value from the paper.
+
+targets:
+  - description: "Number of countries in panel"
+    location: "Configured G4 panel"
+    paper_value: 4.0
+    paper_units: "count"
+    our_key: "n_units"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Total panel observations (post-lag)"
+    location: "Per-unit T - p summed: (480-4)*3 + (372-4) = 1796"
+    paper_value: 1796.0
+    paper_units: "count"
+    our_key: "total_observations"
+    tolerance: 100.0
+    tolerance_kind: "absolute"
+
+  - description: "Pooled VAR stability (max|eig| < 1)"
+    location: "Stationarity of the shared lag block (replication-derived pin: 0.9967; band kept below 1 so the target actually enforces stability)"
+    paper_value: 0.99
+    paper_units: "max|eig| modulus"
+    our_key: "pooled_max_eig"
+    tolerance: 0.0099
+    tolerance_kind: "absolute"
+
+  - description: "Mean-group VAR stability (max|eig| < 1)"
+    location: "Stationarity of the averaged-coefficient lag block (replication-derived pin: 0.9900; band kept below 1 so the target actually enforces stability)"
+    paper_value: 0.99
+    paper_units: "max|eig| modulus"
+    our_key: "mg_max_eig"
+    tolerance: 0.0099
+    tolerance_kind: "absolute"
+
+  # ---- IRF qualitative signs (a monetary tightening shock) ----
+  # The Cholesky ordering puts str last, so its shock is orthogonal to
+  # contemporaneous {ipi, cpi, ltr} movements. A positive shock to str
+  # = "monetary tightening": str rises on impact, ipi should decline
+  # eventually, cpi response is ambiguous (price puzzle vs textbook).
+  - description: "STR impact response (sign)"
+    location: "Cholesky positive shock to last-ordered variable"
+    paper_value: 1.0
+    paper_units: "indicator: 1 if positive on impact, 0 otherwise"
+    our_key: "str_h0_response_positive"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "IPI response at h=12 (one year), negative expected"
+    location: "Textbook monetary policy transmission to output"
+    paper_value: -1.0
+    paper_units: "indicator: -1 if negative at h=12, +1 if positive"
+    our_key: "ipi_h12_sign"
+    tolerance: 0.0
+    tolerance_kind: "absolute"

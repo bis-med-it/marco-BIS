@@ -1,0 +1,102 @@
+id: "primiceri_2005_tvpvar"
+citation:
+  authors: "Primiceri"
+  year: 2005
+  title: "Time Varying Structural Vector Autoregressions and Monetary Policy"
+  journal: "Review of Economic Studies"
+  volume: "72"
+  pages: "821-852"
+
+research_questions:
+  - "has monetary policy transmission changed over time"
+  - "time variation in VAR parameters"
+  - "Great Moderation and monetary policy"
+  - "evolution of macroeconomic dynamics"
+  - "stochastic volatility in macro time series"
+tags:
+  - tvp_var
+  - stochastic_volatility
+  - time_varying
+  - monetary_policy
+  - us_macro
+  - foundational
+  - great_moderation
+
+model:
+  class: "tvp_var"
+  prior: "training sample calibration"
+  variables:
+    endogenous:
+      - {name: "inflation", proxy: "GDP deflator inflation rate", transform: "level (already a rate)", role: "prices"}
+      - {name: "unemployment rate", proxy: "civilian unemployment rate", transform: "level", role: "real activity"}
+      - {name: "3-month Treasury bill rate", proxy: "3-month T-bill secondary-market rate (TB3MS); Primiceri prefers this to the federal funds rate (p. 830 fn 9)", transform: "level (annualized rate)", role: "policy instrument"}
+    exogenous: []
+  lags: 2
+  frequency: "quarterly"
+  hyperparameters:
+    training_sample: "first ~40 observations for prior calibration"
+    k_Q: 0.01
+    k_S: 0.1
+    k_W: 0.01
+  mcmc:
+    total_draws: 10000   # paper p. 830: "10,000 iterations of the Gibbs sampler"
+    burn_in: 2000        # paper p. 830: "discarding the first 2000"
+    thinning: "none in the paper"
+
+identification:
+  method: "cholesky"
+  ordering: ["inflation", "unemployment", "3-month Treasury bill rate"]
+  rationale: >
+    Policy rate ordered last: the Fed observes current inflation and
+    unemployment before setting the rate. Inflation and unemployment
+    do not respond within the quarter to monetary policy.
+
+sample:
+  start: "1953Q1"
+  end: "2001Q3"
+  notes: >
+    Paper sample 1953:I-2001:III (p. 830). Training sample = first 10 years
+    (40 observations, 1953:I-1962:IV) for prior calibration; estimation on
+    the remainder.
+
+expected_results:
+  time_variation:
+    coefficients: "gradual drift; more aggressive policy response to inflation post-Volcker"
+    volatility: "decline in shock volatility from mid-1980s (Great Moderation)"
+    impulse_responses: "responses to NON-SYSTEMATIC policy vary little over time: \"the stability of the response of unemployment to policy shocks is remarkable... no evidence of nonlinearities in the responses of the economy to non-systematic policy\" (p. 833). What changes is systematic policy and shock volatility, not the transmission of a given shock."
+  notes: >
+    The paper finds both changes in systematic policy (how the Fed responds
+    to inflation/unemployment) and changes in shock volatility. The relative
+    importance of the two channels for the Great Moderation is debated.
+    Del Negro and Primiceri (2015) published a corrigendum correcting the
+    original sampler's block ordering; use a corrected algorithm. The
+    shipped sampler uses the corrected order (mixture indicators drawn
+    after the coefficient and covariance blocks and before the
+    volatilities); see `scripts/lib/tvp.py`.
+
+recommend_when:
+  - "user suspects structural change in the sample"
+  - "sample spans known policy regime changes (pre/post Volcker, GFC)"
+  - "user wants to study how transmission mechanisms have evolved"
+  - "user is interested in the Great Moderation"
+  - "stochastic volatility is important (crisis periods)"
+not_recommended_when:
+  - "short sample (< 100 observations), too few for meaningful time variation"
+  - "more than 4-5 variables: TVP-VAR is computationally prohibitive"
+  - "user primarily wants forecasting; constant-parameter BVAR is simpler and often sufficient"
+  - "user needs fast computation (TVP-VAR MCMC takes minutes to hours)"
+alternative_approaches:
+  - {id: "sims_1980_var", reason: "constant-parameter baseline for comparison"}
+  - {id: "cee_1999_monetary_svar", reason: "richer variable set but constant parameters"}
+
+implementation_notes:
+  replication: "scripts/replications/primiceri_2005_tvpvar/"
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-03"
+  against: "original paper (Primiceri 2005, REStud 72(3), 821-852) + Del Negro-Primiceri (2015) corrigendum"
+  pdf_location: "papers/primiceri_2005_tvpvar.pdf"
+  notes: >
+    The prior scale constants k_Q, k_S, k_W enter squared (p. 831).
+

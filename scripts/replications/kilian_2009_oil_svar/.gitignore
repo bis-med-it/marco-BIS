@@ -1,0 +1,4 @@
+# Fetched on first run by replicate.py (Kilian's data.txt from the JCR-Econ repo)
+# and regenerable outputs; keep scaffolding versioned, not data/outputs.
+data/
+outputs/

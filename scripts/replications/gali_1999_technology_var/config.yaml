@@ -1,0 +1,78 @@
+# Replication config for Galí (1999).
+# Mirrors the dictionary entry at:
+#   skills/model-dictionary/entries/gali_1999_technology_var.yaml
+
+replication:
+  id: "gali_1999_technology_var"
+  title: "Galí (1999) Technology vs Non-Technology Shocks"
+  subtitle: "Bivariate VAR in productivity growth and hours growth; long-run identification of technology shocks"
+
+# --- Data ---
+data:
+  source: "fred_qd"
+  file: "data/fred_qd/dataset.csv"
+  # Paper US sample is 1948:1-1994:4 (p. 258). FRED-QD starts 1959Q1, so the
+  # replication effectively runs 1959Q1-1994Q4 (1959Q2 after differencing).
+  sample_start: "1959-01-01"        # FRED-QD floor; paper is 1948:1 (unreachable from FRED-QD)
+  sample_end: "1994-12-31"          # 1994Q4 (paper endpoint)
+  series:
+    # Loaded in LEVELS; the script constructs the VAR variables, mirroring the
+    # paper's own construction x = log GDP - log hours (p. 258):
+    #   dlog_prod  = 100*dlog(GDPC1) - 100*dlog(HOANBS)
+    #   dlog_hours = 100*dlog(HOANBS)
+    # HOANBS (nonfarm business hours) proxies the paper's "total employee-hours
+    # in nonagricultural establishments" (Citibase), the closest FRED-QD concept;
+    # the paper's series includes government, HOANBS does not (see README).
+    - {name: "gdp",   fred_code: "GDPC1",  transform: "level"}
+    - {name: "hours", fred_code: "HOANBS", transform: "level"}
+  variable_labels:
+    dlog_prod:  "Productivity Growth"
+    dlog_hours: "Hours Growth"
+    hours_detrended: "Hours (detrended)"
+
+# --- Model ---
+model:
+  class: "var"
+  lags: 4              # NOT stated in the published paper (deferred to the
+                       # unpublished appendix / NBER WP 5721); 4 quarterly lags
+                       # is the replication-literature convention. See README.
+  trend: "c"
+
+# --- Identification ---
+identification:
+  method: "long_run"
+  # Productivity ordered first; the lower-triangular long-run constraint then
+  # imposes Galí's single restriction: only technology shocks may have a
+  # permanent effect on the LEVEL of labour productivity (pp. 255, 257).
+  shock_names: ["technology", "nontechnology"]
+  sign_normalization:
+    technology:    {dlog_prod: +1}     # technology raises productivity on impact
+    nontechnology: {dlog_hours: +1}    # expansionary nontech shock raises hours
+                                       # (sign is irrelevant for the conditional
+                                       # correlations: products are sign-invariant)
+
+# --- IRF ---
+irf:
+  horizon: 12                      # paper figures plot 12 quarters
+  bands: "parameter_draws"
+  n_draws: 2000                    # paper fn. 17 uses 500 MC draws from the
+                                   # asymptotic distribution; 2000 for smoother bands
+  credible_intervals: [0.68, 0.90]
+
+# --- Conditional correlations (paper eq. 24) ---
+conditional_correlations:
+  truncation_horizon: 400          # truncation of the infinite MA sums (paper fn. 16
+                                   # truncates "at a large lag"; IRFs are ~0 long before this)
+
+# --- Robustness variant: detrended hours (Table 1 Panel B) ---
+detrended_variant:
+  enabled: true                    # second VAR on [dlog_prod, detrended log hours]
+                                   # (paper p. 257: identification accommodates I(0) hours)
+
+# --- Historical decomposition (Section IV, Figure 6) ---
+historical_decomposition:
+  hp_lambda: 1600                  # components HP-filtered ex post (p. 266)
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

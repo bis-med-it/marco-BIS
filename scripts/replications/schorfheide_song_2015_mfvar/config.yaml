@@ -1,0 +1,67 @@
+# Replication config for Schorfheide-Song (2015) mixed-frequency VAR.
+# Simplified setup with FRED-MD (monthly) + FRED-QD (quarterly GDP).
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/schorfheide_song_2015_mfvar.yaml
+
+replication:
+  id: "schorfheide_song_2015_mfvar"
+  title: "Schorfheide-Song (2015) MF-VAR: 4-variable demo"
+  subtitle: "Mixed-frequency BVAR with Mariano-Murasawa aggregation; quarterly GDP, monthly IP/CPI/FFR"
+
+# --- Data ---
+data:
+  sample_start: "1960-01-01"
+  sample_end: "2019-12-31"
+
+  monthly:
+    source: "fred_md"
+    series:
+      - {name: "ip_growth",  fred_code: "INDPRO"}
+      - {name: "cpi_growth", fred_code: "CPIAUCSL"}
+      - {name: "ffr",        fred_code: "FEDFUNDS"}
+    transforms:
+      ip_growth:  "dlog_x_100"
+      cpi_growth: "dlog_x_100"
+      ffr:        "level"
+    variable_order: ["ip_growth", "cpi_growth", "ffr"]
+
+  quarterly:
+    source: "fred_qd"
+    series:
+      - {name: "gdp_growth", fred_code: "GDPC1"}
+    transforms:
+      gdp_growth: "dlog_x_100"
+    variable_order: ["gdp_growth"]
+
+  variable_labels:
+    ip_growth:  "Industrial Production Growth (%, m/m)"
+    cpi_growth: "CPI Inflation (%, m/m)"
+    ffr:        "Federal Funds Rate"
+    gdp_growth: "Real GDP Growth (%, q/q, monthly-aligned)"
+
+# --- Model ---
+model:
+  class: "mfvar"
+  lags: 4
+  trend: "c"
+  state_lags: 5
+
+# --- Prior ---
+prior:
+  lambda_1: 0.2
+  lambda_2: 0.5
+  lambda_3: 1.0
+  lambda_4: 100.0
+  mu: 1.0
+  delta: 1.0
+
+# --- Gibbs ---
+gibbs:
+  n_iter: 500
+  burn_in: 100
+  thin: 1
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

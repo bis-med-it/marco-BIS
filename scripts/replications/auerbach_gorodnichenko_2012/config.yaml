@@ -1,0 +1,76 @@
+# Replication config for Auerbach-Gorodnichenko (2012) state-dependent LP
+# of fiscal multipliers in expansions vs recessions.
+#
+# Three-variable quarterly system: government spending, real GDP, tax
+# revenue. Identification: Cholesky with g ordered first (Blanchard-Perotti
+# timing). State: 7Q MA of real GDP growth, normalised to z ~ N(0,1).
+# State function: logistic F(z_{t-1}) = exp(-gamma*z) / (1 + exp(-gamma*z)),
+# where F~1 indicates recession (low growth state) and F~0 indicates
+# expansion (high growth state).
+#
+# Sample starts in 1959 (FRED-QD availability; AG used 1947Q1). End at
+# 2008Q4 per the paper.
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/auerbach_gorodnichenko_2012.yaml
+
+replication:
+  id: "auerbach_gorodnichenko_2012"
+  title: "Auerbach-Gorodnichenko (2012) State-Dependent LP"
+  subtitle: "Fiscal multipliers in expansions vs recessions via smooth-transition LP"
+
+# --- Data ---
+data:
+  source: "fred_qd"
+  sample_start: "1959-01-01"
+  sample_end: "2008-12-31"
+
+  series:
+    - {name: "g",   fred_code: "GCEC1"}      # real govt consumption + investment
+    - {name: "gdp", fred_code: "GDPC1"}      # real GDP
+    - {name: "tax", fred_code: "FGRECPTx"}   # real federal receipts (deflated)
+
+  transforms:
+    g:   "log"
+    gdp: "log"
+    tax: "log"
+
+  variable_order: ["g", "tax", "gdp"]   # AG [G, T, y] order (paper p. 4, 6); G first => inert for the G-shock
+
+  variable_labels:
+    g:   "log Govt Spending"
+    gdp: "log Real GDP"
+    tax: "log Federal Receipts"
+
+# --- Model ---
+model:
+  lags: 4
+  horizon: 20                              # 5 years quarterly
+  trend: "c"
+  shock_var: "g"                           # govt spending shock
+
+state:
+  # State variable: 7-quarter moving average of real GDP growth (dlog_gdp),
+  # then normalised cross-sectionally to mean 0, std 1 over the sample.
+  # AG 2012 use this construction in Section II.
+  window: 7
+  gamma: 1.5                               # logistic transition parameter
+  # F(z) = exp(-gamma*z) / (1 + exp(-gamma*z))
+  # F=1 when z is very negative (recession); F=0 when z is very positive (expansion).
+
+# --- IRF inference ---
+inference:
+  hac_lag_rule: "horizon_plus_one"
+  credible_intervals: [0.68, 0.90]
+
+# --- Multiplier reporting ---
+multipliers:
+  # AG 2012 report cumulative spending multipliers (Table 1, p. 9): recession
+  # >> expansion. (AG's own estimator is an STVAR; this demo uses state-dep LP.)
+  # Log-unit responses become dollar multipliers via Y/G (sample mean):
+  #   M(h) = (sum_{j=0..h} dY(j)) / (sum_{j=0..h} dG(j)) * (Y/G)
+  horizons: [4, 8, 16]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

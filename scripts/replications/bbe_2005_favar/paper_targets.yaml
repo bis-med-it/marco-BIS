@@ -1,0 +1,71 @@
+# Paper-target validation for Bernanke-Boivin-Eliasz (2005) FAVAR replication.
+#
+# BBE 2005 (QJE) introduced FAVAR: augment a small monetary VAR with
+# principal-component factors extracted from a large information panel.
+# Headline: adding factors "considerably reduced" the price puzzle (a
+# small positive price response remains in year 1, pp. 405-406) and
+# fixes the small-VAR IP response that is "very persistent,
+# inconsistent with long-run money neutrality" (p. 405).
+#
+# Result in this sample (19-var replication): with only 19 panel
+# variables (vs BBE's 120-series Stock-Watson-style panel from the
+# DRI/McGraw-Hill database, pp. 403, 416), the FAVAR-style IRFs don't always
+# resolve the puzzles. Targets focus on structural sanity rather than
+# directional headline claims.
+
+targets:
+  - description: "Sample size (440 monthly obs, 1965-2001); REPLICATION value, not a paper value"
+    location: "config.yaml (replication design; paper sample is 1959:1-2001:8 = 512 months, p. 404)"
+    paper_value: 440.0
+    paper_units: "count"
+    our_key: "n_obs"
+    tolerance: 12.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of information-panel variables (REPLICATION value, not a paper value)"
+    location: "config.yaml (replication design; paper panel is 120 series, p. 403)"
+    paper_value: 19.0
+    paper_units: "count"
+    our_key: "n_info_vars"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of factors extracted"
+    location: "K = 3 is the paper's preferred specification (Figure II, p. 408)"
+    paper_value: 3.0
+    paper_units: "count"
+    our_key: "n_factors"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "VAR(p) on [factors, FFR] lag order"
+    location: "\"We use thirteen lags\" (p. 405; 7-lag robustness similar)"
+    paper_value: 13.0
+    paper_units: "count"
+    our_key: "n_lags"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "FAVAR is stable (max|eig| < 1)"
+    location: "Stability diagnostic"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "stable"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Rotation = slow_fast_BBE (BBE's standard FAVAR identification scheme)"
+    location: "two-step rotation procedure, BBE 2005 Section III.A, pp. 404-405"
+    paper_value: 1.0
+    paper_units: "indicator (1.0 = rotation is slow_fast_BBE)"
+    our_key: "rotation_is_bbe"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "IRF tensor shape: (H+1, n_responses, 1) with n_responses ≥ n_factors + 1"
+    location: "FAVAR projects shocks back to info-panel variables; expect ≥4 responses"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "irf_shape_ok"
+    tolerance: 0.0
+    tolerance_kind: "absolute"

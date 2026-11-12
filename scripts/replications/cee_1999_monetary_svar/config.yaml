@@ -1,0 +1,82 @@
+# Replication config for Christiano, Eichenbaum, Evans (1999).
+# Mirrors the dictionary entry at:
+#   skills/model-dictionary/entries/cee_1999_monetary_svar.yaml
+
+replication:
+  id: "cee_1999_monetary_svar"
+  title: "CEE (1999) Monetary Policy VAR"
+  subtitle: "Seven-variable quarterly OLS VAR(4), Cholesky-identified monetary shock; matches the paper's no-prior estimator"
+
+# --- Data ---
+# Three-stage pipeline: lib.load_dataset -> lib.preprocess -> lib.transform
+data:
+  source: "fred_qd"
+  # CEE 1999 benchmark sample (p. 84): quarterly 1965:3-1995:2 = 120 obs.
+  # FRED-QD uses quarter-END month dating (Q3 -> Sep, Q2 -> Jun), so these
+  # bounds select exactly 1965Q3..1995Q2. VAR(4) loses 4 to lags -> T_eff=116.
+  sample_start: "1965-07-01"
+  sample_end: "1995-06-30"
+
+  series:
+    - {name: "m1_real",     fred_code: "M1REAL"}
+    # CPI reverses M1REAL's own deflation (FRED: M1SL / CPIAUCSL); the GDP
+    # deflator stays a model variable and must not be used for this step.
+    - {name: "cpi_for_m1",  fred_code: "CPIAUCSL"}
+    - {name: "rgdp",        fred_code: "GDPC1"}
+    - {name: "deflator",    fred_code: "GDPCTPI"}
+    - {name: "commodity",   fred_code: "PPIACO"}
+    - {name: "ffr",         fred_code: "FEDFUNDS"}
+    - {name: "totreserves", fred_code: "TOTRESNS"}
+    - {name: "nbreserves",  fred_code: "NONBORRES"}
+
+  # Cross-series: nominal M1 from real M1 * CPI
+  preprocess:
+    - {operation: "nominalise", real: "m1_real", deflator: "cpi_for_m1", output: "m1"}
+
+  transforms:
+    rgdp:        "log"
+    deflator:    "log"
+    commodity:   "log"   # paper: "smoothed change"; PPIACO proxy uses log level
+    ffr:         "level"
+    totreserves: "log"
+    nbreserves:  "log"
+    m1:          "log"
+
+  # Benchmark order per CEE 1999 p. 83: Y, P, PCOM, FF, TR, NBR, M
+  # (total reserves before nonborrowed reserves).
+  variable_order: ["rgdp", "deflator", "commodity", "ffr", "totreserves", "nbreserves", "m1"]
+
+  variable_labels:
+    rgdp:        "Real GDP"
+    deflator:    "GDP Deflator"
+    commodity:   "Commodity Prices"
+    ffr:         "Federal Funds Rate"
+    totreserves: "Total Reserves"
+    nbreserves:  "Non-Borrowed Reserves"
+    m1:          "M1"
+
+# --- Model ---
+# CEE 1999 fits a plain OLS VAR (p. 73).
+model:
+  class: "var"
+  lags: 4
+  trend: "c"
+
+# --- Identification ---
+identification:
+  method: "cholesky"
+  # Order within the fast block (TR, NBR, M1) does not affect the FFR-shock
+  # IRFs (CEE Proposition 4.1(iii), p. 82), but matches the paper's list.
+  ordering: ["rgdp", "deflator", "commodity", "ffr", "totreserves", "nbreserves", "m1"]
+  shock_of_interest: "ffr"     # the monetary policy shock (CEE's focus)
+
+# --- IRF ---
+irf:
+  horizon: 40                  # quarters
+  bands: "asymptotic_mc"       # plain VAR: asymptotic Monte Carlo
+  n_draws: 2000
+  credible_intervals: [0.68, 0.90]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

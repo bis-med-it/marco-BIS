@@ -1,0 +1,73 @@
+# Paper-target validation for Primiceri (2005) TVP-VAR replication.
+#
+# Primiceri 2005 (REStud) introduced time-varying-parameter VARs with
+# stochastic-volatility shocks for monetary-policy analysis. The
+# headline empirical claims (abstract, p. 821): both systematic and
+# non-systematic monetary policy changed over the sample, with interest
+# rate responses to inflation and unemployment trending toward more
+# aggressive behaviour, despite large oscillations; these changes had a
+# negligible effect on the rest of the economy, where the volatility of
+# non-policy shocks matters more.
+#
+# This replication runs the homoskedastic baseline (coefficients only)
+# on a 3-var quarterly system; the SV sampler exists as
+# lib.tvp.fit_tvp_var_sv_primiceri but is not run here. The key sanity check is that the TVP
+# coefficients ARE time-varying (range > 0) but bounded (no explosive
+# drift).
+
+targets:
+  - description: "Sample size (FRED-QD-truncated 1959Q1-2001Q3; Primiceri's PUBLISHED sample is 1953:I-2001:III = 195q)"
+    location: "FRED-QD floor is 1959Q1, so the replication can't reach Primiceri's 1953 start (paper p. 830)"
+    paper_value: 170.0
+    paper_units: "count (quarters); replication count, NOT the paper's 195"
+    our_key: "n_obs"
+    tolerance: 4.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of variables (3-var: inflation, unemp, tbill)"
+    location: "Primiceri 2005 §4, p. 830: inflation, unemployment, 3-month T-bill rate (fn 9)"
+    paper_value: 3.0
+    paper_units: "count"
+    our_key: "n_vars"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "TVP-VAR lag order (p=2)"
+    location: "Primiceri 2005 §4, p. 830: 'Two lags are used for the estimation' (config.yaml matches)"
+    paper_value: 2.0
+    paper_units: "count"
+    our_key: "n_lags"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "TVP-VAR is stable at last period (max|eig| < 1)"
+    location: "Framework stability check at end of sample (not reported in the paper)"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "stable_last_period"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Max |eigenvalue| at last period (replication: ~0.94)"
+    location: "Regression baseline from an earlier run of this replication (not a paper number)"
+    paper_value: 0.94
+    paper_units: "modulus"
+    our_key: "max_eig_last"
+    tolerance: 0.10
+    tolerance_kind: "absolute"
+
+  - description: "Gibbs draws stored (300 iter - 100 burn ⇒ 200)"
+    location: "config.yaml (paper: 10,000 iterations, first 2,000 discarded, p. 830)"
+    paper_value: 200.0
+    paper_units: "count"
+    our_key: "n_stored"
+    tolerance: 25.0
+    tolerance_kind: "absolute"
+
+  - description: "Own-lag-1 coefficients vary over time (mechanical framework check, not a test of the paper's findings)"
+    location: "Max - min of own-lag-1 path > 0 (any drift); any TVP draw passes"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "tvp_coefs_drift"
+    tolerance: 0.0
+    tolerance_kind: "absolute"

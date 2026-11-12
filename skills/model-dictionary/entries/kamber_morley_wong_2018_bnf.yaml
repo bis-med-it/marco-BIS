@@ -1,0 +1,199 @@
+id: "kamber_morley_wong_2018_bnf"
+citation:
+  authors: "Kamber, Morley, Wong"
+  year: 2018
+  title: "Intuitive and Reliable Estimates of the Output Gap from a Beveridge-Nelson Filter"
+  journal: "Review of Economics and Statistics"
+  volume: "100"
+  issue: "3"
+  pages: "550-566"
+
+research_questions:
+  - "model-based trend-cycle decomposition without the spurious cycles of HP or other filters"
+  - "real-time output gap estimation with small revisions"
+  - "Beveridge-Nelson decomposition with a low signal-to-noise constraint"
+  - "what is a credible output gap that aligns with NBER recession dating"
+  - "trend-cycle decomposition that predicts future inflation and growth"
+tags:
+  - trend_cycle
+  - output_gap
+  - beveridge_nelson
+  - signal_to_noise
+  - autoregressive
+  - real_time
+  - reliable
+  - hp_filter_critique
+  - canonical
+  - methodological
+
+model:
+  class: "filter"                # univariate model-based filter
+  prior: "Minnesota shrinkage on the second-difference AR coefficients: phi*_j ~ N(0, 0.5/j^2) (eq. 7, p. 553)"
+  # the paper's BASELINE is Bayesian ("we opt for Bayesian estimation in
+  # practice"), with improper priors on mu, sigma2_e and a closed-form
+  # posterior; MLE is the acknowledged alternative (this repo's lib implements
+  # the MLE/OLS variant without shrinkage)
+  variables:
+    endogenous:
+      - {name: "log real GDP", proxy: "GDPC1 (FRED) for US", transform: "log_diff", role: "primary application; paper uses US quarterly real GDP"}
+    typical_applications:
+      - "log real GDP (output gap)"
+      - "unemployment rate (deviations from NAIRU)"
+      - "log industrial production"
+      - "credit aggregates"
+    exogenous: []
+  ar_order: "p = 12 with the shrinkage prior (\"We set p = 12, but our results are robust to higher values of p given the shrinkage\", p. 554); unconstrained SIC favours p = 1 (fn 1); the shrinkage is what makes the high order reliable in real time"
+  frequency: "quarterly (paper); works for any frequency"
+
+methodology:
+  approach: "beveridge_nelson_with_low_signal_to_noise"
+  classical_bn_decomposition: >
+    Let y_t be the LOG LEVEL of GDP with drift mu = E[Δy_t], and fit an
+    AR(p) to demeaned growth x_t = Δy_t − mu:
+      x_t = a_1 x_{t-1} + ... + a_p x_{t-p} + e_t
+    The Beveridge-Nelson decomposition (paper pp. 551-552, eqs. 1-3)
+    defines the trend as the long-horizon conditional expectation of the
+    LEVEL net of deterministic drift:
+      tau_t = lim_{h→∞} E_t[y_{t+h} − h·mu]
+      cycle_t = y_t − tau_t
+    With companion matrix F and growth state X_t = (x_t, ..., x_{t-p+1})',
+    cycle_t = −e1'F(I−F)^{-1}X_t, a linear function of current and
+    lagged growth.
+    The CLASSICAL BN decomposition produces a cycle that is small in
+    amplitude, jagged, and unintuitive: variance is dominated by the
+    permanent (trend) component because the AR's innovation variance
+    is nearly the trend variance.
+  kmw_innovation: >
+    KMW argue the classical BN cycle is unintuitive because the
+    unconstrained AR implies a HIGH signal-to-noise ratio
+    delta = sigma^2_dtrend / sigma^2_e = psi(1)^2 (trend-shock variance
+    over forecast-error variance; US GDP MLE: 2.22 for an AR(1) p. 552,
+    1.86 for an AR(12) p. 555), so nearly all variation is assigned to
+    the trend. They IMPOSE a low delta-bar.
+    Since psi(1) = 1/(1 - sum(phi_j)), fixing delta = delta-bar is the
+    exact LINEAR restriction sum(phi_j) = 1 - 1/sqrt(delta-bar)
+    (delta-bar = 0.25 => sum(phi) = -1). This makes the cycle larger,
+    more persistent, and NBER-aligned.
+  estimation:
+    - "1. Choose AR order p for dlog GDP (KMW use p = 12 for US quarterly GDP)."
+    - >
+      2. Impose sum(phi_j) = 1 - 1/sqrt(delta-bar) exactly via the
+      Dickey-Fuller substitution phi_1 = s - sum(phi_j, j>=2); KMW estimate
+      the remaining coefficients by BAYESIAN posterior mode under the eq.-7
+      Minnesota shrinkage prior (closed form; "This is the main reason we
+      impose a shrinkage prior"; it fixes AR(12) overfitting and the revision
+      properties, p. 557). The lib implements the acknowledged MLE variant:
+      closed-form OLS without shrinkage.
+    - "3. Compute trend and cycle from the constrained AR via the standard BN companion-form formula."
+  automatic_delta_selection: >
+    The paper does NOT hand-pick delta-bar: eq. (8), p. 553 selects it
+    as the FIRST LOCAL MAXIMISER (from delta ~ 0) of the
+    amplitude-to-noise ratio alpha(delta) = sigma^2_c(delta) /
+    sigma^2_e(delta), implemented by incrementing delta-bar until the
+    estimated ratio decreases (3-step recipe, p. 554). US GDP:
+    delta-bar = 0.24; stable at 0.21-0.26 across pseudo-real-time
+    vintages (fn 14, p. 556); cross-country 0.08 (NZ) to 0.21 (Canada)
+    (p. 565). NOT implemented in the lib; supply delta explicitly.
+  structural_break_treatment: >
+    Sec. IV.A: Bai-Perron finds ONE US break in mean growth, 2006Q1
+    (the Fig.-8 caption's "2006Q2" is the paper's own typo); the break
+    date is fragile (2000Q2 with data to 2016Q1, p. 564). Recommended
+    real-time remedy: DYNAMIC DEMEANING by a backward-looking rolling
+    40-quarter average growth rate (eq. 11, p. 564; the first 40
+    quarters use that decade's average, fn 28).
+  recommended_snr: >
+    The paper's US value is delta-bar = 0.24, "determined by automatic
+    selection based on maximizing the amplitude-to-noise ratio"
+    (p. 554); 0.25 appears in the paper only as the AR(1)
+    stationarity bound delta > 0.25 (p. 553). This repo's 0.25 default
+    is a rounded convenience (=> sum(phi) = -1 exactly). NB delta is
+    psi(1)^2, so it can exceed 1; unconstrained US-GDP MLE gives 2.22
+    (AR(1)) / 1.86 (AR(12)).
+
+what_it_provides:
+  output_gap_estimate: >
+    Cycle = y_t - trend_t at each date. Larger amplitude than HP /
+    classical BN; smaller revisions than HP in real time; aligned
+    with NBER expansions/recessions.
+  one_sided: >
+    Method is naturally one-sided (cycle_t depends only on y_t, ...,
+    y_{t-p+1}), so real-time and final-vintage gaps are similar, with small
+    revisions as the sample extends. (The paper backcasts the initial
+    lags with sample-mean growth so estimation starts 1947Q2, fns 1/13;
+    the lib instead drops the first p observations.)
+  forecast_useful: >
+    Out-of-sample exercises run h = 1-8 quarters (expanding window,
+    evaluation from 1970Q1, DM 90% bands; Figs. 6-7). Growth: BN-based
+    gaps beat all NON-BN methods at all horizons (the AR(1)-BN gap is
+    slightly better at short horizons). Inflation (CPI Phillips
+    curve): gains "marginal at best", with RRMSEs mostly 1.00-1.05,
+    significant only vs HP/deterministic at some horizons (p. 563).
+    The abstract's forecasting claim is explicitly relative to
+    decompositions "that impose a low signal-to-noise ratio".
+
+what_it_does_NOT_provide:
+  - "structural interpretation (no shock identification)"
+  - "multivariate decomposition (univariate filter; use UC models for multivariate)"
+  - "non-stationary cycles (cycle is stationary by construction in AR(p))"
+
+expected_results:
+  vs_hp_filter:
+    reliability: >
+      the paper's HP advantage is RELIABILITY, not amplitude or NBER fit:
+      BN-filter revision SD and RMS are "less than one-quarter of a standard
+      deviation of the ex post estimate" vs "well over half" for HP and other
+      popular methods; near-perfect real-time/ex-post correlation and ~90%
+      same-sign for the BN filter, "with the HP filter performing the worst"
+      on correlation (1970Q1-2012Q4, pp. 557-558)
+    intuitiveness_caveat: "HP/BP/deterministic/Harvey-Clark gaps are ALSO \"reasonably intuitive... persistent, large in amplitude, and generally moving procyclically\" (p. 556); \"being intuitive is clearly not a sufficient condition\""
+  vs_classical_bn:
+    intuition: >
+      constrained BN gap is large, persistent and significantly negative in
+      recessions (Fig. 2, p. 554); unconstrained BN gap is tiny and jagged;
+      correlation between the two AR(12) gaps is only 0.39 (Fig. 3, p. 555);
+      BNF-gap correlation with the CBO gap is 0.75 (vs -0.30 for AR(1)-BN, p.
+      554)
+  forecast_performance:
+    growth_prediction: "Nelson (2008) regression y_{t+h} - y_t = alpha + beta c-hat_t with beta < 0 expected; BN-based gaps beat non-BN methods at all h = 1-8"
+    inflation_prediction: "ADL CPI Phillips curve: gains marginal (RRMSE 1.00-1.05); the paper reports only forecast-RMSE comparisons, never the sign of the gap coefficient"
+
+recommend_when:
+  - "user wants a model-based, theory-anchored output gap"
+  - "real-time / one-sided gap is required"
+  - "user has criticised HP filter and wants a defensible alternative"
+  - "Phillips-curve / NAIRU work requiring a credible gap measure"
+  - "financial-cycle work where a model-based gap is wanted"
+not_recommended_when:
+  - "user wants a multivariate gap (use UC or multivariate BN with cointegration)"
+  - "user is committed to HP for consistency with prior literature"
+  - "AR(p) model is misspecified (non-stationary series of unknown integration order)"
+  - "user wants a continuously smooth trend (BNF trend is jagged like the data)"
+  - "structural interpretation of the cycle is needed"
+alternative_approaches:
+  - {id: "hamilton_2018_filter", reason: "regression-based alternative to HP; complementary critique"}
+  - {id: "primiceri_2005_tvpvar", reason: "TVP with stochastic volatility offers a fully time-varying view (multivariate)"}
+  - notes: >
+      Standard alternatives not in the dictionary:
+      - Watson (1986) unobserved-components model for the gap (Morley,
+        Nelson & Zivot 2003 allow correlated components; both are KMW's
+        comparators);
+      - Laubach-Williams (2003/2016) for natural rate + gap.
+
+implementation_notes:
+  replication: "scripts/replications/kamber_morley_wong_2018_bnf/"
+  practical_choices:
+    ar_order: "paper: p = 12 with the eq.-7 shrinkage prior (unconstrained SIC favours p = 1); the lib's IC-based selection is a fallback when p is not pinned"
+    snr_delta: "paper's US value: 0.24 by automatic amplitude-to-noise selection (0.21-0.26 across vintages; 0.08-0.21 cross-country); this repo defaults to the rounded 0.25"
+    sample_loss: "the lib loses p observations at sample start; the paper instead backcasts initial lags with sample-mean growth (fns 1/13)"
+  alternative_implementations: >
+    - Kamber-Morley-Wong MATLAB code: their replication archive.
+    - R: 'bnf' package (Kamber-Morley-Wong-implemented).
+    - Python: this repo's lib implements the MLE variant without
+      shrinkage (see estimation above).
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-10"
+  against: "REStat 100(3) published PDF, field-by-field (online appendix not available)"
+  pdf_location: "papers/kamber_morley_wong_2018_bnf.pdf"
+

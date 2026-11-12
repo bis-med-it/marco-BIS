@@ -1,0 +1,157 @@
+id: "lenza_primiceri_2022_covid_var"
+citation:
+  authors: "Lenza, Primiceri"
+  year: 2022
+  title: "How to Estimate a Vector Autoregression after March 2020"
+  journal: "Journal of Applied Econometrics"
+  volume: "37"
+  issue: "4"
+  pages: "688-699"
+
+research_questions:
+  - "estimating VARs through the COVID-19 pandemic without dropping or distorting the sample"
+  - "handling extreme outliers in macro time series"
+  - "preserving forecast-uncertainty quantification when sample contains crises"
+  - "robust BVAR estimation in the presence of variance regime shifts"
+  - "should COVID observations be dropped, included, or down-weighted?"
+tags:
+  - covid
+  - outlier_treatment
+  - bvar
+  - heteroskedasticity
+  - forecasting
+  - variance_scaling
+  - us_macro
+  - canonical
+  - pandemic
+  - robust_estimation
+
+model:
+  class: "bvar"
+  prior: "minnesota"             # also compatible with Sims-Zha, hierarchical priors
+  variables:
+    endogenous:
+      # The paper's empirical illustration: SEVEN MONTHLY variables (p. 691).
+      - {name: "unemployment rate", proxy: "UNRATE (FRED)", transform: "level", role: "labour market"}
+      - {name: "log nonfarm payroll employment", proxy: "PAYEMS (FRED)", transform: "log", role: "labour market"}
+      - {name: "log real PCE", proxy: "PCE deflated (FRED)", transform: "log", role: "activity"}
+      - {name: "log real PCE services", proxy: "real PCE services (FRED)", transform: "log", role: "activity (COVID-sensitive)"}
+      - {name: "log PCE price index", proxy: "PCEPI (FRED)", transform: "log", role: "prices"}
+      - {name: "log PCE services price index", proxy: "PCE services prices (FRED)", transform: "log", role: "prices"}
+      - {name: "log core PCE price index", proxy: "PCEPILFE (FRED)", transform: "log", role: "prices"}
+    exogenous: []
+    note: >
+      The federal funds rate is EXCLUDED (stuck at the ZLB,
+      p. 691). The method itself is variable-agnostic; this is the
+      paper's illustration.
+  lags: 13                       # monthly, p. 691; method is lag-agnostic
+  frequency: "monthly (paper's illustration); method suits monthly or quarterly"
+
+heteroskedasticity_treatment:
+  approach: "lenza_primiceri_scaling"
+  reduced_form_specification: >
+    y_t = c + A_1 y_{t-1} + ... + A_p y_{t-p} + s_t * u_t
+    where u_t ~ N(0, Sigma) and s_t is a scalar time-varying scale factor.
+    For pre-COVID t: s_t = 1.
+    For t in {March 2020, April 2020, May 2020, June 2020, ...}:
+       s_t inflates the innovation variance for that period, decaying back to 1.
+  parameterisation: >
+    The paper's specification (p. 690, eq. 1): THREE FREE scale factors,
+    one per early-COVID month, then geometric decay anchored at the May
+    value:
+      s_{Mar 2020} = s_bar_0
+      s_{Apr 2020} = s_bar_1
+      s_{May 2020} = s_bar_2
+      s_{Mar 2020 + j} = 1 + (s_bar_2 - 1) * rho^(j-2)   for j > 2
+    theta = [s_bar_0, s_bar_1, s_bar_2, rho], estimated by a Metropolis
+    step on the analytically-marginalised posterior (Appendix A, p. 698;
+    ML alternative in Appendix B), with hyperpriors Pareto(scale 1,
+    shape 1) on each s_bar and Beta(mode 0.8, sd 0.2) on rho (p. 691).
+    Published posterior peaks (Fig 1, p. 692): s_bar ~ 17 (Mar), ~65
+    (Apr), ~20 (May); rho just below 0.8, so innovation volatility falls
+    about one-fifth per month after June 2020 and is still ~85% above
+    pre-COVID by June 2021 (p. 694).
+  intuition: >
+    The first principle: COVID innovations are an order of magnitude
+    larger than typical macro shocks (up to ~65x in April 2020) but
+    operate through the SAME VAR transmission mechanism.
+    Down-weighting (not dropping) the observations preserves
+    parameter consistency while keeping the data informative for
+    forecast variance.
+
+estimation:
+  approach: "bayesian_var_with_scaled_innovations"
+  method: >
+    1. Parameterise the variance scaling s_t with theta =
+       [s_bar_0, s_bar_1, s_bar_2, rho].
+    2. Sample theta by a Metropolis step on the analytical marginal
+       posterior (the paper's approach, App. A), or maximise the
+       marginal likelihood (App. B).
+    3. Estimate the rest of the BVAR conditional on s_t; the Minnesota
+       tightness lambda is itself estimated GLP-2015 style (Gamma
+       hyperprior, mode 0.2, sd 0.4; fn. 1, p. 691).
+    Equivalent to GLS with a known time-varying scale (y_t / s_t).
+  why_not_just_drop_covid: >
+    Dropping COVID gives unbiased parameter estimates BUT massively
+    understates forecast uncertainty going forward: the residual
+    distribution conditional on the dropped sample no longer reflects
+    the true shock distribution that includes COVID-type tail events.
+    Forecast bands become too narrow.
+  why_not_treat_normally: >
+    Including COVID at face value contaminates parameter estimates
+    because OLS/posterior mean is pulled by the 10-sigma observations;
+    Lambda and other coefficients shift to 'explain' the pandemic.
+
+sample:
+  start: "1988M12"
+  end: "2021M5"
+  notes: >
+    The paper's sample (p. 691); NOT extended earlier
+    because of the post-1990 flattening of the inflation-activity
+    relation (Del Negro et al. 2020). The contribution is specifically
+    about samples that include March 2020 onward.
+
+expected_results:
+  parameter_estimates: "stable across pre-COVID and post-COVID samples once s_t scaling is applied; without scaling, parameters shift materially"
+  forecast_point: "similar to dropping COVID for the central forecast"
+  forecast_uncertainty: "dropping COVID makes density forecasts 'excessively sharp' (p. 689), which is acceptable for parameter estimation but inappropriate for forecasting; the paper's scaling keeps that uncertainty in the forecasts"
+  irfs: "largely unchanged from pre-COVID BVAR (since transmission mechanism is preserved); without scaling, IRFs distort due to the 2020 outliers"
+  marginal_data_density: "scaling beats INCLUDING COVID UNTREATED by 965 log-points (p. 693); no ML comparison against the drop-COVID model is reported"
+
+recommend_when:
+  - "sample includes March 2020 or later (COVID period)"
+  - "user wants to forecast through or beyond the pandemic"
+  - "user is unwilling to drop COVID observations (information loss)"
+  - "user wants accurate forecast UNCERTAINTY quantification through tail events"
+  - "BVAR is the baseline framework"
+not_recommended_when:
+  - "sample ends pre-2020 (no need)"
+  - "user is studying COVID effects specifically (treating COVID as outlier defeats the purpose)"
+  - "non-VAR framework (method is specific to (B)VAR)"
+  - "alternative is preferred: stochastic volatility VAR captures time-varying variance more flexibly"
+alternative_approaches:
+  - {id: "primiceri_2005_tvpvar", reason: "TVP-VAR with stochastic volatility: fully flexible time-varying variance; more general but more complex"}
+  - {id: "litterman_1986_bvar", reason: "baseline BVAR without scaling, fine for pre-COVID samples"}
+  - {id: "glp_2015_prior_selection", reason: "if hyperparameter selection is the bigger concern than COVID handling"}
+
+implementation_notes:
+  replication: "scripts/replications/lenza_primiceri_2022_covid_var/"
+  fred_alignment: >
+    All seven paper variables are in (or derivable from) FRED-MD. The
+    paper's headline specification is MONTHLY; a quarterly analogue
+    scales 2020Q1-Q3 (the paper names those quarters as the quarterly
+    mapping, p. 690).
+  related: >
+    - Carriero, Clark, Marcellino, Mertens (2024, REStat): alternative
+      stochastic-volatility approach to the same problem.
+    - Schorfheide & Song (2021) NBER w29535: MF-VAR adaptation for
+      pandemic data (different from this paper).
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-10"
+  against: "JAE 37(4) published PDF, field-by-field"
+  pdf_location: "papers/lenza_primiceri_2022_covid_var.pdf"
+  notes: >
+    The lib's obs_scale applies fixed, user-supplied s_t; the paper's
+    estimation of theta is a documented deviation in the replication.

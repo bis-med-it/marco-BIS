@@ -1,0 +1,112 @@
+id: "glp_2015_prior_selection"
+citation:
+  authors: "Giannone, Lenza, Primiceri"
+  year: 2015
+  title: "Prior Selection for Vector Autoregressions"
+  journal: "Review of Economics and Statistics"
+  volume: "97"
+  pages: "436-451"
+
+research_questions:
+  - "how to choose BVAR hyperparameters"
+  - "optimal shrinkage in Bayesian VARs"
+  - "marginal likelihood for model comparison"
+  - "macroeconomic forecasting with BVARs"
+tags:
+  - bvar
+  - minnesota_prior
+  - hyperparameter_selection
+  - marginal_likelihood
+  - forecasting
+  - us_macro
+  - benchmark
+
+model:
+  class: "bvar"
+  prior: "minnesota"
+  variables:
+    # GLP enter all variables in ANNUALIZED LOG LEVELS (logs x 4), except
+    # interest rates, which are taken in levels (paper p. 441). Three system
+    # sizes; the small one is the prototypical monetary VAR.
+    endogenous:
+      # Small specification (3 variables)
+      - {name: "real GDP", proxy: "real GDP", transform: "annualized log level (log x 4)", role: "output"}
+      - {name: "GDP deflator", proxy: "GDP deflator", transform: "annualized log level (log x 4)", role: "prices"}
+      - {name: "Federal funds rate", proxy: "effective FFR", transform: "level", role: "policy"}
+      # Medium (7-var, Smets-Wouters 2007 set) adds: consumption, investment,
+      # hours worked, wages. Large = 22 vars (Stock-Watson 2008 database).
+    exogenous: []
+  lags: 5
+  frequency: "quarterly"
+  hyperparameters:
+    # GLP treat the hyperparameters gamma as random with hyperpriors and
+    # explore the hyperposterior p(gamma|Y) ∝ p(Y|gamma) p(gamma) (p. 440).
+    # The paper's full procedure SIMULATES this hierarchy (re-estimating the
+    # hyperparameter posterior at each forecast origin); maximizing p(gamma|Y)
+    # at its mode is an empirical-Bayes approximation, and maximizing the
+    # marginal likelihood p(Y|gamma) alone corresponds to a FLAT hyperprior.
+    # The replication maximises the marginal likelihood alone (a flat
+    # hyperprior; no Gamma hyperpriors). The paper's Gamma hyperpriors sit at
+    # the Sims-Zha (1998) modes.
+    lambda_1: "selected by marginal likelihood; Gamma hyperprior mode 0.2, std 0.4 (optimum is tighter for larger systems)"
+    lambda_3: 1       # lag decay: prior std on lag s scales as ~1/s (variance ~1/s^2), paper p. 440
+    mu: "selected; sum-of-coefficients prior (Doan et al. 1984), Gamma hyperprior mode 1, std 1"
+    delta: "selected; dummy-initial-observation prior (Sims 1993), Gamma hyperprior mode 1, std 1"
+    notes: >
+      Natural-conjugate (symmetric Kronecker) Minnesota prior -- there is NO
+      asymmetric cross-variable weight (no Litterman lambda_2); own-vs-cross
+      scaling comes from Sigma. Prior mean is a random walk (own-first-lag
+      mean 1). The inverse-Gamma hyperprior (scale (0.02)^2) sits on
+      psi_i/(d-n-1) (the PRIOR MEAN of Sigma_ii), not on Sigma itself,
+      which has the inverse-Wishart prior with d = n+2 degrees of freedom
+      (the minimum guaranteeing the prior mean exists, p. 440).
+
+identification:
+  method: "none"
+  rationale: "paper focuses on forecasting, not structural identification"
+
+sample:
+  start: "1959Q1"
+  end: "2008Q4"
+  notes: >
+    Full sample 1959Q1-2008Q4 (paper p. 441); recursive forecast evaluation
+    starts from the 1959Q1-1974Q4 window and runs to 2008Q4 (evaluation
+    period 1975Q1-2008Q4). Pre-ZLB.
+
+expected_results:
+  forecasting:
+    rmsfe_ratio_to_rw: "< 1.0 for GDP and inflation at most horizons"
+    optimal_lambda_1: "around 0.05-0.2 depending on model size"
+    optimal_mu: "finite, improving fit over no sum-of-coefficients prior"
+    optimal_delta: "finite, improving fit over no dummy-initial-obs prior"
+  notes: >
+    Table 2 (p. 442) reports MSFE levels of point forecasts for small,
+    medium and large BVARs against a flat-prior VAR, a factor model and a
+    random walk; it is not a grid of hyperparameter combinations. The
+    marginal likelihood surface is typically smooth with a clear optimum.
+
+recommend_when:
+  - "user needs to choose BVAR hyperparameters formally"
+  - "forecasting is the primary objective"
+  - "user wants data-driven prior calibration"
+not_recommended_when:
+  - "user has strong prior beliefs from institutional knowledge"
+  - "structural identification is the focus (hyperparameters matter less)"
+alternative_approaches:
+  - {id: "litterman_1986_bvar", reason: "simpler, fixed hyperparameters"}
+  - {id: "bgr_2010_large_bvar", reason: "for larger systems where tightness must scale"}
+
+implementation_notes:
+  replication: "scripts/replications/glp_2015_prior_selection/"
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-03"
+  against: "original paper (Giannone, Lenza & Primiceri 2015, REStat 97(2), 436-451)"
+  pdf_location: "papers/glp_2015_prior_selection.pdf"
+  notes: >
+    The replication is a method demo of marginal-likelihood optimisation on
+    the CEE 1999 spec (7 variables, 4 lags, log levels, no Gamma
+    hyperpriors). It does not reproduce GLP's Table 2; see the replication
+    README "Relationship to GLP's paper".
+

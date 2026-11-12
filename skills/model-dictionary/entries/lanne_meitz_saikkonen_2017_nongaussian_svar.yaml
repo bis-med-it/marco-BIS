@@ -1,0 +1,202 @@
+id: "lanne_meitz_saikkonen_2017_nongaussian_svar"
+citation:
+  authors: "Lanne, Meitz, Saikkonen"
+  year: 2017
+  title: "Identification and Estimation of Non-Gaussian Structural Vector Autoregressions"
+  journal: "Journal of Econometrics"
+  volume: "196"
+  issue: "2"
+  pages: "288-304"
+
+research_questions:
+  - "structural identification of SVARs without sign / zero / external-instrument restrictions"
+  - "exploiting non-Gaussianity in shocks for point identification"
+  - "data-driven structural identification"
+  - "independent-component analysis for macroeconomic shocks"
+  - "consistent ML estimation of SVARs with non-Gaussian errors"
+tags:
+  - structural_identification
+  - non_gaussian
+  - independent_components
+  - higher_moments
+  - maximum_likelihood
+  - canonical
+  - identification
+  - data_driven
+
+model:
+  class: "structural_var"
+  prior: null                  # paper is frequentist ML; Bayesian extensions exist (e.g. AFM 2023)
+  variables:
+    endogenous:
+      # The method is general; the PAPER'S OWN application (Sec. 5) is a
+      # FOUR-variable quarterly SVAR(2) on Castelnuovo's (2013) dataset:
+      - {name: "output gap", proxy: "log real GDP deviation from CBO potential", role: "real activity (paper application)"}
+      - {name: "GDP-deflator inflation", role: "prices (paper application)"}
+      - {name: "Kansas City Financial Conditions Index (KCFCI)", role: "financial conditions, the variable the headline is about (paper application)"}
+      - {name: "federal funds rate", role: "policy rate (paper application)"}
+    exogenous: []
+    note: >
+      Headline of the application (abstract): "a negative impact of a
+      contractionary monetary policy shock on financial markets", and
+      the recursive identifying restrictions are CLEARLY REJECTED
+      (LR p = 0.071, Wald p = 0.025; p. 298). Sample 1990-2008Q2,
+      T = 74 (KCFCI starts 1990; p. 296). Errors independent
+      Student's t, estimated by the three-step method (Table 1).
+  lags: "paper's application: p = 2 quarterly (BIC selects 1, AIC 2; Portmanteau favours 2; matches Castelnuovo's DSGE VAR(2) representation, pp. 296-297)"
+  frequency: "any"
+
+identification:
+  method: "non_gaussian_independent_components"
+  framework: "Lanne-Meitz-Saikkonen (2017); related to Comon (1994) ICA literature"
+  rationale: >
+    A standard Gaussian SVAR is identified only up to rotation: any
+    orthogonal matrix Q applied to the structural shocks produces the
+    same reduced-form covariance, so additional restrictions (Cholesky,
+    sign, IV) are needed. LMS Proposition 1 (p. 291): if the structural
+    shocks are mutually INDEPENDENT and at most one component is
+    Gaussian, then B* = B D P, so B is identified up to a PERMUTATION P
+    and a SCALING by a diagonal D with nonzero entries (the section is
+    titled "Identification up to permutations and scalings"). With the
+    common unit-variance normalisation of shocks (this repo's
+    convention), the scaling ambiguity reduces to SIGN. The paper's own
+    Identification Scheme (Sec. 3.3): unit-norm columns, then the
+    permutation with |c_ii| > |c_ij| (i < j), then unit diagonal of B;
+    the excluded parameter set has Lebesgue measure zero (Prop. 2).
+    This is the SVAR analogue of the ICA identification result
+    (Comon 1994).
+  testability_of_restrictions: >
+    The paper's second headline (abstract; Sec. 4.6): because B is
+    statistically identified, under- and exactly-identifying SHORT- and
+    LONG-RUN economic restrictions become TESTABLE by standard
+    Wald/LR/LM tests (recursiveness has r = n(n-1)/2 restrictions).
+    Label shocks by IRF inspection BEFORE testing; the tests are tied
+    to the scheme's fixed permutation (fn 11, p. 295). The application
+    rejects recursive identification (LR p = 0.071, Wald p = 0.025).
+  key_assumptions:
+    - "mutual independence of structural shocks (stronger than uncorrelatedness; fn 7: rules out multivariate-t errors)"
+    - "at most one component is Gaussian (Assumption 1(ii), p. 290)"
+    - >
+      shocks i.i.d. over time with zero mean and finite positive variance
+      (Assumption 1(i)); Appendix A's Assumption 1* relaxes this for the
+      IDENTIFICATION results to strict stationarity + temporal
+      uncorrelatedness with mutually independent component processes
+      (covering GARCH-type errors), but not for the Sec.-4 asymptotics
+  what_is_identified: >
+    Columns of B are identified up to (i) permutation, so which column is
+    which 'shock' must be assigned ex post: the paper prescribes
+    OUTSIDE information ("sign restrictions, or conventional
+    identifying short-run or long-run restrictions", p. 291) and in its
+    application labels by inspecting IRFs against CEE-style sign
+    properties (p. 297); this repo's largest-impact convention is one
+    practical version of that; (ii) scaling by a diagonal D with nonzero
+    entries (Prop. 1); after unit-variance normalisation only the SIGN
+    remains and must be pinned (e.g., positive impact on the variable
+    usually thought to be hit by that shock).
+  algorithm: >
+    The paper's estimators (Sec. 4): (a) full joint (local) ML under a
+    CORRECTLY SPECIFIED parametric non-Gaussian density per shock.
+    Theorem 1 gives consistency and sqrt(T)-asymptotic normality with
+    covariance I(theta_0)^-1; candidate densities: Student's t ("most
+    commonly employed"), normal inverse Gaussian, generalized
+    hyperbolic, and their skewed versions (p. 293; GED and
+    mixture-of-normals are NOT the paper's menu; mixtures are
+    Lanne-Lutkepohl 2010, whose components are only uncorrelated);
+    (b) a THREE-STEP estimator for short samples / high dimension
+    (Sec. 4.5): (1) LS for the AR parameters, (2) maximise the
+    likelihood over (B-parameters, scales, shape) on the LS residuals,
+    (3) re-maximise over the AR parameters; it is asymptotically efficient
+    under the Symmetry Condition (Theorem 2). Quasi-ML and
+    semiparametric methods are explicitly FUTURE WORK (p. 298). This
+    repo's pml_t (rotation + per-shock t on whitened OLS residuals)
+    most closely resembles STEP 2 of the three-step estimator under a
+    unit-variance normalisation; FastICA is a repo substitution
+    consistent with Prop. 1, not an LMS method.
+
+sample:
+  start: "depends on application"
+  end: "depends on application"
+  notes: >
+    Repo guidance (not from the paper): prefer samples long enough to
+    estimate tail behaviour reliably. NB the paper's own application
+    uses just T = 74 quarterly observations and addresses the short
+    sample with the three-step estimator (pp. 296-297).
+
+expected_results:
+  identification_check:
+    non_gaussianity: >
+      test the ESTIMATED STRUCTURAL residuals (not the reduced-form
+      residuals, which are mixtures of the structural shocks) for
+      normality (Jarque-Bera, Shapiro-Wilk). The theorem allows AT MOST
+      ONE Gaussian component (Assumption 1 / Proposition 1, pp. 290-291),
+      and failure to reject normality is finite-sample evidence, not
+      proof of Gaussianity. Treat broad nonrejection as an
+      INCONCLUSIVE / weak-identification caution, not a categorical
+      identification failure.
+    independence: >
+      test residual independence beyond zero correlation (mutual
+      information, distance covariance). Pairwise checks are useful
+      diagnostics but do not establish MUTUAL independence for n > 2;
+      the maintained assumption applies to the structural shocks.
+  comparison_to_other_id:
+    vs_cholesky: "no recursive ordering needed; results can differ when slow/fast ordering assumptions are suspect"
+    vs_sign_restrictions: "point identification rather than set identification, more informative if assumptions hold"
+    vs_proxy_svar: "no external instrument required (data-driven)"
+  application_anchors: >
+    Table 1 (p. 297), three-step t-ML on the 4-variable application:
+    shock scales sigma-hat = (0.293, 0.657, 0.211, 0.198); per-shock
+    t degrees of freedom nu-hat = (9.920, 3.141, 4.073, 15.049); IRFs
+    to 16 quarters with 68% Hall's-percentile bands from a residual
+    bootstrap with 1000 replications (p. 297); multivariate Jarque-Bera
+    rejects normality at 1%.
+  notes: >
+    The headline contribution is theoretical: non-Gaussianity is a free
+    identifying assumption when shocks happen to be non-Gaussian, which
+    is empirically common in macro/financial data (fat tails, skewness).
+    Identification is "'statistical' but not 'economic'... for
+    interpretation, additional information is needed to endow the
+    structural shocks with economic labels" (p. 289). The empirical
+    performance depends on the strength of the non-Gaussianity: weak
+    non-Gaussianity gives weak identification.
+
+recommend_when:
+  - "user rejects Cholesky / sign / external-instrument identification"
+  - "residuals are clearly non-Gaussian (fat tails, skew), as in financial data, EM data, crisis periods"
+  - "user is willing to assume mutual independence of structural shocks (strong assumption)"
+  - "point identification is preferred over set identification"
+  - "external instruments are unavailable"
+not_recommended_when:
+  - "residuals are approximately Gaussian (weak / no identification)"
+  - "user is uncomfortable assuming mutual independence (only uncorrelatedness is typically assumed elsewhere)"
+  - "small T relative to N (higher-moment estimation noisy)"
+  - "user wants standard, widely-understood identification (Cholesky / sign are more familiar)"
+  - "shocks of interest are intuitively named ex ante; LMS identifies up to permutation, requiring ex-post labelling"
+alternative_approaches:
+  - {id: "rigobon_2003_heteroskedasticity_id", reason: "another data-driven identification; it uses second-moment heterogeneity instead of higher moments"}
+  - {id: "uhlig_2005_sign_restrictions", reason: "if theory provides directional priors, sign restrictions are more interpretable"}
+  - {id: "gertler_karadi_2015_proxy_svar", reason: "if an external HF instrument is available, proxy-SVAR is point-identified without ICA assumptions"}
+  - {id: "cee_1999_monetary_svar", reason: "baseline recursive identification when an ordering is defensible"}
+
+related_methods:
+  - "Gouriéroux, Monfort & Renne (2017): ICA and pseudo-maximum-likelihood inference for non-Gaussian SVARs"
+  - "Keweloh (2021): GMM estimation of non-Gaussian SVAR (overidentifying moment conditions)"
+  - "Andrade, Ferroni & Melosi (2023): higher-order moments restrictions"
+  - "Maxand (2020): distinguishing non-Gaussian SVAR identification from rotation-based set identification"
+
+implementation_notes:
+  replication: "scripts/replications/lanne_meitz_saikkonen_2017_nongaussian_svar/"
+  alternative_implementations: >
+    R: the 'svars' package implements LMS-type non-Gaussian ML.
+  diagnostic_recommendations: >
+    Before relying on non-Gaussian identification, always run:
+      - Jarque-Bera on each residual series.
+      - Pairwise residual independence tests (distance covariance,
+        mutual information); uncorrelatedness ≠ independence.
+      - Sensitivity to distributional assumption (t vs mixture of normals).
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-10"
+  against: "JoE 196 (2017) 288-304 published PDF (Elsevier OA), field-by-field"
+  pdf_location: "papers/lanne_meitz_saikkonen_2017_nongaussian_svar.pdf"
+

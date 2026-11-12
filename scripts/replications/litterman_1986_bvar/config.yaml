@@ -1,0 +1,98 @@
+# Replication config for Litterman (1986) "Forecasting with Bayesian Vector
+# Autoregressions—Five Years of Experience" (JBES 4(1), 25-38).
+#
+# Litterman's actual seven-variable QUARTERLY system (paper p. 29):
+#   annual growth of real GNP, annual inflation (GNP deflator), the
+#   unemployment rate, log M1, log gross private domestic investment, the
+#   4-6 month commercial paper rate, and the change in business inventories.
+#   SIX lags + a constant; estimated 1948:1-1979:3.
+# Minnesota prior (paper pp. 30 and 32): own-lag-j std = lambda/j (harmonic),
+#   cross-variable lags x theta=0.2, overall tightness lambda=0.2, and own-
+#   first-lag prior mean = 1 for ALL variables. No sum-of-coefficients or
+#   dummy-initial-observation priors -- neither is part of the specification
+#   the paper describes (DLS 1984; Sims 1993).
+#
+# FRED-QD proxies + sample: see README "Substitutions (FRED-QD proxies)". The paper's
+# 1948-1979 sample predates FRED-QD (which starts 1959Q1); the rolling OOS
+# demonstration uses 1959Q1-2019Q4 for enough origins (pre-COVID; ends before
+# the 2020 M1 redefinition).
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/litterman_1986_bvar.yaml
+
+replication:
+  id: "litterman_1986_bvar"
+  title: "Litterman (1986) Bayesian VAR"
+  subtitle: "Seven-variable quarterly BVAR with the Minnesota prior at Litterman's paper hyperparameters"
+
+# --- Data ---
+data:
+  source: "fred_qd"
+  sample_start: "1959-01-01"   # FRED-QD floor; paper estimates 1948:1-1979:3
+  sample_end: "2019-12-31"     # modern OOS demonstration; pre-COVID / pre-M1-redefinition
+
+  series:
+    - {name: "rgnp",    fred_code: "GDPC1",   role: "real output (-> annual growth)"}
+    - {name: "defl",    fred_code: "GDPCTPI", role: "price level (-> annual inflation)"}
+    - {name: "urate",   fred_code: "UNRATE",  role: "unemployment rate"}
+    - {name: "m1_real", fred_code: "M1REAL",  role: "real M1 (input to nominalise)"}
+    # CPI reverses M1REAL's own deflation (FRED: M1SL / CPIAUCSL); the GDP
+    # deflator stays a model variable and must not be used for this step.
+    - {name: "cpi_for_m1", fred_code: "CPIAUCSL", role: "price index for nominalising M1 only"}
+    - {name: "invest",  fred_code: "GPDIC1",  role: "real gross private domestic investment"}
+    - {name: "cprate",  fred_code: "CP3M",    role: "commercial paper rate (3mo; 4-6mo proxy)"}
+    - {name: "businv",  fred_code: "BUSINVx", role: "business inventories level (input)"}
+
+  preprocess:
+    - {operation: "nominalise", real: "m1_real", deflator: "cpi_for_m1", output: "m1"}
+
+  transforms:
+    rgnp:   "dlog_x_400"   # annualized real GNP growth (paper: "annual growth rate")
+    defl:   "dlog_x_400"   # annualized inflation (paper: "annual inflation rate")
+    urate:  "level"
+    m1:     "log"
+    invest: "log"
+    cprate: "level"
+    businv: "diff"         # change in business inventories (CBI proxy; NIPA CBI not in FRED-QD)
+
+  variable_order: ["rgnp", "defl", "urate", "m1", "invest", "cprate", "businv"]
+
+# --- Model: Minnesota prior at Litterman's paper hyperparameters ---
+model:
+  class: "bvar"
+  lags: 6                   # Litterman 1986 p. 29: six lags
+  trend: "c"
+
+  prior:
+    asymmetric: true        # Litterman's prior is asymmetric (cross-variable lags shrink by lambda_2)
+    lambda_1: 0.2           # overall tightness (paper p. 32: lambda=0.2 adopted as best)
+    lambda_2: 0.2           # cross-variable weight theta (paper p. 30: theta=0.2)
+    lambda_3: 1.0           # harmonic lag decay: own-lag-j std = lambda/j
+    lambda_4: 100.0         # loose (near-flat) intercept prior
+    mu: 0.0                 # sum-of-coefficients prior OFF (DLS 1984; not part of the replicated specification)
+    delta: 0.0              # dummy-initial-observation prior OFF (Sims 1993; not part of the replicated specification)
+    rw_deltas: [1, 1, 1, 1, 1, 1, 1]   # own-first-lag prior mean = 1 for ALL variables (paper p. 29)
+
+# --- IRF computation (illustrative; the paper's focus is forecasting) ---
+irf:
+  method: "cholesky"        # orthogonalised (Cholesky) innovation responses
+  horizon: 20
+  shock_var: "cprate"       # innovation in the commercial paper rate
+  bands: "parameter_draws"
+  n_draws: 1000
+
+# --- Out-of-sample forecast evaluation (Litterman's actual headline) ---
+forecast_evaluation:
+  # Rolling-window OOS RMSE: BVAR (paper hyperparameters) vs unrestricted OLS
+  # VAR(6). Litterman's 1986 headline is that the Minnesota prior beats the
+  # unrestricted VAR at quarterly forecasting horizons.
+  window_size: 80           # 20 years quarterly
+  horizon: 12               # forecast 1..12 quarters ahead
+  step: 1                   # consecutive quarterly origins; the DM
+                            # truncation/HLN correction assumes origin
+                            # spacing equals the loss array's period
+  horizons_to_report: [1, 4, 8, 12]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

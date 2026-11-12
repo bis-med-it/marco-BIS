@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use this framework, please cite the accompanying working paper (preferred-citation below)."
+title: "MaRCo@BIS (MAcroeconometric Research Companion)"
+authors:
+  - family-names: "Lombardi"
+    given-names: "Marco"
+  - family-names: "Park"
+    given-names: "Taejin"
+  - family-names: "Perez-Cruz"
+    given-names: "Fernando"
+version: "1.0.0"
+date-released: "2026-11-12"
+license: Apache-2.0
+preferred-citation:
+  type: report
+  title: "MaRCo@BIS: AI-agentic econometric analysis for central bankers"
+  authors:
+    - family-names: "Lombardi"
+      given-names: "Marco"
+    - family-names: "Park"
+      given-names: "Taejin"
+    - family-names: "Perez-Cruz"
+      given-names: "Fernando"
+  institution:
+    name: "Bank for International Settlements"
+  collection-title: "BIS Working Papers"
+  number: "1395"
+  year: 2026
+  month: 11

@@ -1,0 +1,68 @@
+# Paper-target validation for Banbura-Giannone-Lenza (2015) replication.
+#
+# BGL 2015 (IJF) operationalised Kalman-smoother conditional forecasts
+# for large systems (building on Clarida-Coyle 1984; DK 2002 simulation
+# smoother) in
+# BVARs. Headline: Kalman-filter conditional forecasts for a 26-variable
+# euro-area BVAR and DFM, 1995Q1-2012Q4 (pp. 739, 746); the paper
+# conditions on realised real GDP, HICP and the short-term rate (§4.5,
+# p. 750). The FFR scenarios below are this replication's own.
+#
+# This replication compares 3 forecast scenarios on a CEE-style 7-var
+# BVAR: unconditional, higher_for_longer (FFR pinned at 5%), zlb
+# (FFR pinned at 0.25%). The headline check is that the conditioning
+# is exact (Kalman smoother enforces the constraint to machine precision).
+
+# NB: all numeric targets below are REPLICATION-DERIVED (US 7-variable
+# CEE-style redesign). None is a number from the paper, whose
+# quantitative anchors (Table 1 MSFE ratios, App. A timings) are not
+# reproducible on this dataset.
+
+targets:
+  - description: "Sample size (216 quarters of FRED-QD)"
+    location: "config.yaml"
+    paper_value: 216.0
+    paper_units: "count"
+    our_key: "n_obs"
+    tolerance: 4.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of scenarios (higher_for_longer + zlb)"
+    location: "config.yaml: 2 conditional scenarios"
+    paper_value: 2.0
+    paper_units: "count"
+    our_key: "n_scenarios"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "higher_for_longer scenario pins FFR to 5.0 EXACTLY at every horizon"
+    location: "Kalman smoother conditioning is exact"
+    paper_value: 5.0
+    paper_units: "FFR level"
+    our_key: "hfl_ffr_avg"
+    tolerance: 0.001
+    tolerance_kind: "absolute"
+
+  - description: "zlb scenario pins FFR to 0.25 EXACTLY at every horizon"
+    location: "Kalman smoother conditioning is exact"
+    paper_value: 0.25
+    paper_units: "FFR level"
+    our_key: "zlb_ffr_avg"
+    tolerance: 0.001
+    tolerance_kind: "absolute"
+
+  - description: "68% density bands non-degenerate for unconditional forecast (variance > 0)"
+    location: "Simulation smoother at fitted parameters; innovation uncertainty only"
+    paper_value: 1.0
+    paper_units: "indicator (1.0 = lower_68 < upper_68 everywhere)"
+    our_key: "bands_non_degenerate"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Conditioning produces a different forecast path than unconditional (max |shift| > 0.001 across vars)"
+    location: "Conditioning has nonzero effect (sanity check)"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "conditioning_alters_path"
+    tolerance: 0.0
+    tolerance_kind: "absolute"

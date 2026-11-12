@@ -1,0 +1,195 @@
+id: "mertens_ravn_2013_tax_proxy_svar"
+citation:
+  authors: "Mertens, Ravn"
+  year: 2013
+  title: "The Dynamic Effects of Personal and Corporate Income Tax Changes in the United States"
+  journal: "American Economic Review"
+  volume: "103"
+  issue: "4"
+  pages: "1212-1247"
+
+research_questions:
+  - "effects of personal vs corporate income tax shocks on output"
+  - "fiscal multiplier of tax cuts"
+  - "narrative-IV identification of tax shocks in a SVAR"
+  - "distinguishing tax shocks by type (personal vs corporate)"
+  - "structural identification of fiscal shocks without zero restrictions"
+tags:
+  - fiscal_policy
+  - tax_shocks
+  - proxy_svar
+  - external_instruments
+  - narrative
+  - romer_romer_tax_narrative
+  - us_macro
+  - canonical
+  - identification
+
+model:
+  class: "structural_var"
+  prior: null                  # baseline classical VAR with external-instrument identification
+  variables:
+    endogenous:
+      # 7-variable headline VAR
+      - {name: "average personal income tax rate (APITR)", proxy: "(federal personal current taxes, NIPA T3.2 L3, PLUS contributions for govt social insurance, T3.2 L11) / personal tax base (p. 1221, 1245)", transform: "level", role: "personal income tax policy"}
+      - {name: "average corporate income tax rate (ACITR)", proxy: "federal taxes on corporate income EXCLUDING Federal Reserve banks (T3.2 L9) / corporate profits ex-Fed (p. 1221, 1245)", transform: "level", role: "corporate income tax policy"}
+      - name: "personal income tax base (PITB)"
+        proxy: >
+          personal income (T2.1 L1) minus govt transfers (T2.1 L17) plus
+          social-insurance contributions (T3.2 L11), deflated by GDP deflator
+          and population (16+, Francis-Ramey), log (p. 1245)
+        transform: "log"
+        role: "personal tax base (real per capita)"
+      - {name: "corporate income tax base (CITB)", proxy: "corporate profits (T1.12 L13) less Federal Reserve Bank profits, deflated by GDP deflator and population, log (p. 1245)", transform: "log", role: "corporate tax base (real per capita)"}
+      - {name: "log real FEDERAL government purchases per capita", proxy: "Real Federal Government Consumption Expenditures and Gross Investment (NIPA T1.1.3 L22) per capita; FEDERAL, not total-government GCEC1 (p. 1245)", transform: "log", role: "fiscal control"}
+      - {name: "log real GDP per capita", proxy: "GDPC1 / population (FRED)", transform: "log", role: "output"}
+      - {name: "log real federal debt held by the public, per capita", proxy: "Federal Debt HELD BY THE PUBLIC (Favero-Giavazzi 2012 DEBTHP), deflated by GDP deflator and population; NOT gross debt, NOT a debt/GDP ratio (p. 1245)", transform: "log", role: "debt stock"}
+    exogenous: []
+  lags: 4                      # 4 quarterly lags, chosen by AIC (p. 1225); benchmark in (log) levels with a constant
+  frequency: "quarterly"
+
+identification:
+  method: "external_instrument"        # proxy SVAR with two simultaneous instruments
+  policy_variables: "(APITR, ACITR): personal and corporate tax rates"
+  external_instruments:
+    personal_tax_proxy:
+      name: "narrative personal income tax shock"
+      construction: >
+        Sum of changes in personal income tax (II) and employment tax
+        (EM) liabilities, scaled by the previous period's personal
+        taxable income, DEMEANED at the nonzero observations. Retains
+        only RR-exogenous changes implemented within ONE QUARTER of
+        legislation (anticipated changes dropped), giving 13 II + 2 EM
+        observations (pp. 1213, 1221, 1223).
+      sources: "Decomposition of Romer-Romer (2009a) liability records, supplemented with congressional records, ERP, and CBO reports (p. 1220)"
+    corporate_tax_proxy:
+      name: "narrative corporate income tax shock"
+      construction: >
+        Changes in corporate income tax (CI) liabilities scaled by the
+        previous period's corporate profits, demeaned at nonzero
+        observations; unanticipated (implementation lag < 1 quarter)
+        only: 16 CI observations from 21 acts (pp. 1221, 1223).
+      sources: "Decomposition of Romer-Romer (2009a), extended (p. 1220)"
+  rationale: >
+    Standard SVAR Cholesky identification of tax shocks is contaminated
+    by (i) anticipation effects (taxes announced before implementation);
+    (ii) endogeneity to the cycle (taxes raised when revenue is high);
+    (iii) inability to separate personal from corporate tax shocks within
+    a single contemporaneous-impact restriction. The narrative measure
+    of LEGISLATED, EXOGENOUS-MOTIVATED tax changes addresses all three.
+    Using these as external instruments for the reduced-form residuals
+    of (APITR, ACITR) gives the proxy-SVAR (Stock-Watson 2008,
+    Mertens-Ravn 2013) framework.
+  simultaneous_instruments: >
+    KEY DIFFERENCE FROM GERTLER-KARADI 2015: MR have TWO endogenous
+    policy variables (APITR, ACITR) and TWO external instruments
+    (personal and corporate narrative tax shocks). The 2-instrument
+    proxy-SVAR delivers identification of TWO structural shocks
+    simultaneously. The general algebra is Section I; the k=2 tax
+    application (eqs. 15-17) is Section II.B, closed forms in Appendix A.
+    WITHIN-POLICY-BLOCK NORMALISATION: the paper completes identification
+    by making S_1 TRIANGULAR (a Cholesky of S_1 S_1') and reports BOTH
+    orderings (Figs 2-3), discussing the shocked-rate-ordered-last
+    estimates; the other tax rate's total impact response is nonzero via
+    feedback. The lib's `unit_policy` (H_1^p = I_2) is STRICTER: it
+    zeroes both cross-rate impacts at h=0. The approximation is benign
+    here because the estimated correlation of the two tax shocks is
+    -0.07 [-0.41, 0.50] (p. 1225), but it is a documented deviation.
+  algorithm: >
+    1. Estimate reduced-form VAR by OLS.
+    2. Regress residuals of (APITR, ACITR) on (personal narrative,
+       corporate narrative) as a 2 × 2 first-stage relevance check.
+    3. Recover the 2-column block of B (structural impact matrix)
+       corresponding to (personal tax shock, corporate tax shock) via
+       the instrument-residual covariance structure.
+    4. Compute IRFs. Inference in the paper: recursive Rademacher wild
+       bootstrap (Goncalves-Kilian 2004), 10,000 replications, 95%
+       percentile intervals, proxies resampled with the same draw
+       (p. 1225). Jentsch-Lunsford (2019, AER Comment) later PROVED that
+       scheme asymptotically invalid for proxy-SVARs. In their 2019
+       reply (pp. 2680-2689) MR ACKNOWLEDGE the invalidity and show the
+       68%-level significance of the headline survives under several
+       valid alternatives (the Delta method, the Montiel
+       Olea-Stock-Watson parametric bootstrap extended to k=2 with
+       Newey-West HAC, JL's MBB with UNCENTERED proxies, and MBB with
+       Hall intervals), while pushing back on JL's exact double-centered
+       Efron MBB (the only variant whose interval includes zero); they
+       call MBB "a potentially useful tool" but do not adopt it as the
+       preferred method. No first-stage F exists for the k=2 case.
+
+sample:
+  start: "1950Q1"
+  end: "2006Q4"
+  notes: >
+    Quarterly post-WWII US data, 1950:I-2006:IV (pp. 1220, 1225). The
+    paper states no rationale for the 2006 endpoint; do not attribute a
+    ZLB-avoidance motive to it.
+
+expected_results:
+  personal_tax_cut_shock:
+    output: "+1.4% in the first quarter, peak +1.8% at 3 quarters per 1pp APITR cut (p. 1227, Fig 2)"
+    consumption: "rises markedly (main transmission channel)"
+    investment: "rises moderately"
+    employment: "+0.3% ON IMPACT, peak +0.8% at ~5 quarters (pp. 1212, 1239), not delayed"
+    tax_base: "rises (consistent with supply-side effects on hours/effort)"
+  corporate_tax_cut_shock:
+    output: "+0.4% on impact, up to +0.6% about one year out per 1pp ACITR cut (p. 1228, Fig 3); smaller and less persistent than personal"
+    investment: "rises strongly (main transmission channel); no immediate employment effect, consumption flat or lower (pp. 1214, 1241)"
+    tax_base: "rises strongly (CI base +3.8% within 6 months; near self-financing, p. 1229)"
+  fiscal_multiplier: "personal: 2.0 on impact, maximum 2.5 in the third quarter (p. 1229). Corporate: NOT WELL DEFINED, since corporate tax changes have little revenue impact (pp. 1214, 1229); do not quote a corporate multiplier"
+  notes: >
+    The paper's two headline contributions:
+    (1) Tax cuts have LARGE expansionary effects, contradicting the
+        smaller multipliers found in some pre-narrative VARs.
+    (2) PERSONAL and CORPORATE tax shocks have distinct transmission:
+        personal works through consumption, corporate through
+        investment. Treating tax shocks as homogeneous masks this.
+
+recommend_when:
+  - "user wants to study fiscal/tax shock effects with credible identification"
+  - "research question distinguishes personal vs corporate tax effects"
+  - "user has access to narrative tax-shock series (Mertens-Ravn data archive)"
+  - "user has US quarterly data with sufficient sample"
+  - "user is comparing fiscal vs monetary transmission (pair with GK 2015)"
+not_recommended_when:
+  - "sample includes ZLB / unconventional fiscal policy without adjustment"
+  - "non-US context where narrative tax record is unavailable"
+  - "research interest is government spending shocks (different identification; see Ramey 2011, Auerbach-Gorodnichenko 2012)"
+  - "short sample: narrative instruments are sparse, weak-instrument problems possible"
+alternative_approaches:
+  - {id: "gertler_karadi_2015_proxy_svar", reason: "monetary policy analogue using same proxy-SVAR machinery"}
+  - {id: "auerbach_gorodnichenko_2012", reason: "fiscal multipliers in expansions vs recessions (paper: smooth-transition VAR; the replication uses a state-dependent LP), a different identifying source"}
+  - {id: "stock_watson_2018_lpiv", reason: "LP-IV variant of proxy identification, applicable to tax shocks"}
+  - {id: "cee_1999_monetary_svar", reason: "recursive identification baseline; likely understates tax multipliers per the paper's argument"}
+
+implementation_notes:
+  replication: "scripts/replications/mertens_ravn_2013_tax_proxy_svar/"
+  inference: >
+    Inference should use the Jentsch-Lunsford (2019) MOVING-BLOCK
+    bootstrap (their replacement for the invalid wild bootstrap).
+    lib.proxy_svar_irf(bands="moving_block_bootstrap") implements the JL
+    MBB (single-instrument path); the wild scheme remains only as the
+    MR/GK-legacy option with the JL invalidity warning.
+  fred_alignment: >
+    GDPC1 is in FRED-QD. The paper's federal purchases (NIPA T1.1.3 L22)
+    and federal debt held by the public are not the FRED-QD totals GCEC1
+    and GFDEBTN. APITR, ACITR, PITB and CITB are built from BEA NIPA
+    tables. The replication reads all seven series and both instruments
+    from a staged CSV (data/staging/mertens_ravn_2013.csv); see its README.
+    NARRATIVE INSTRUMENTS: Mertens-Ravn data archive provides the
+    quarterly personal and corporate narrative tax shock series.
+  related_papers:
+    - "Romer-Romer (2009a): narrative tax change records, the source data for the MR instruments (p. 1220)"
+    - "Stock-Watson (2018, EJ): LP-IV companion methodology"
+    - "Jentsch-Lunsford (2019, AER Comment): proves MR's wild bootstrap invalid for proxy-SVARs; proposes the moving-block bootstrap"
+    - "Mertens-Olea (2018, QJE): extension to top-income marginal tax rates"
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-10"
+  against: "AER 103(4) published PDF + the 2019 AER Reply, field-by-field"
+  pdf_location:
+    - "papers/mertens_ravn_2013_tax_proxy_svar.pdf"
+    - "papers/mertens_ravn_2019_reply.pdf"
+  notes: >
+    The narrative source is Romer-Romer (2009a) (p. 1220).

@@ -1,0 +1,160 @@
+id: "schorfheide_song_2015_mfvar"
+citation:
+  authors: "Schorfheide, Song"
+  year: 2015
+  title: "Real-Time Forecasting with a Mixed-Frequency VAR"
+  journal: "Journal of Business & Economic Statistics"
+  volume: "33"
+  issue: "3"
+  pages: "366-380"
+
+research_questions:
+  - "real-time macroeconomic forecasting with mixed-frequency data"
+  - "exploiting within-quarter monthly information for GDP nowcasting"
+  - "mixed-frequency VAR vs quarterly VAR vs MIDAS"
+  - "Bayesian state-space treatment of mixed frequencies"
+  - "data-driven Minnesota hyperparameter selection in MF-VAR"
+tags:
+  - mixed_frequency
+  - bvar
+  - mfvar
+  - nowcasting
+  - forecasting
+  - state_space
+  - minnesota_prior
+  - us_macro
+  - canonical
+  - real_time
+
+model:
+  class: "mfvar"                       # mixed-frequency VAR; state-space form
+  prior: "minnesota"
+  variables:
+    endogenous:
+      quarterly:
+        - {name: "real GDP", proxy: "GDPC1 (FRED)", transform: "log", role: "output, observed as 3-month average of the latent monthly log level"}
+        - {name: "real fixed investment", proxy: "FPIC1 / GPDIC1 (FRED)", transform: "log", role: "investment (quarterly NIPA)"}
+        - {name: "real government expenditures", proxy: "GCEC1 (FRED)", transform: "log", role: "government (quarterly NIPA)"}
+      monthly:
+        - {name: "unemployment rate", proxy: "UNRATE (FRED)", transform: "level / 100", role: "labour market"}
+        - {name: "aggregate hours worked", proxy: "AWHMAN or AWHNONAG (FRED)", transform: "log", role: "labour input"}
+        - {name: "CPI", proxy: "CPIAUCSL (FRED)", transform: "log", role: "price level"}
+        - {name: "industrial production", proxy: "INDPRO (FRED)", transform: "log", role: "monthly real activity"}
+        - {name: "personal consumption expenditure", proxy: "PCE (FRED)", transform: "log", role: "consumption (monthly NIPA)"}
+        - {name: "Federal funds rate", proxy: "FEDFUNDS (FRED)", transform: "level / 100", role: "policy rate"}
+        - {name: "10-year Treasury yield", proxy: "GS10 (FRED)", transform: "level / 100", role: "long rate"}
+        - {name: "S&P 500", proxy: "SP500 (FRED) or stooq", transform: "log", role: "equity prices"}
+    exogenous: []
+    note: >
+      "The variables enter the VARs in log levels with the exception of
+      UNR, FF, and TB, which are divided by 100" (p. 371); these are NOT growth
+      rates. Precise series definitions are in the online appendix; the
+      FRED codes above are this repo's mapping.
+  lags: 6                              # p(m) = 6 by preliminary MDD exploration (Section 4, p. 372); QF-VAR benchmark p(q) = 2
+  frequency: "mixed (monthly base; 3 quarterly variables)"
+  aggregation_rule: >
+    Quarterly observables (GDP, investment, government) = EXACT three-month
+    average of the latent monthly LOG LEVELS (eq. 4, p. 369; requires
+    p >= 3):
+      y^Q_t = (1/3)(x^M_t + x^M_{t-1} + x^M_{t-2})
+    "a log-linear approximation to an arithmetic average"; NIPA-annualised
+    flows, so quarterly values are averages, not sums. Ragged-edge /
+    missing intra-quarter observations are handled by VARYING THE DIMENSION
+    of the observation vector over time (Durbin-Koopman 2001); the paper
+    lists Mariano-Murasawa zero-imputation as an alternative it does NOT
+    use (p. 369). The 5-weight MM identity
+    (1/3, 2/3, 1, 2/3, 1/3) on monthly GROWTH RATES is this level identity
+    rewritten in first differences: equivalent algebra, but not the
+    paper's formulation.
+
+estimation:
+  approach: "bayesian_state_space"
+  method: "Gibbs sampling that alternates between (i) drawing latent monthly states given parameters via Kalman simulation smoother; (ii) drawing VAR parameters given complete monthly history"
+  draws: 20000                         # first 10000 discarded as burn-in, 10000 retained (p. 372)
+  hyperparameter_selection: >
+    Data-driven via marginal data density (Geweke 1999 modified harmonic
+    mean), the paper's contribution alongside the state-space framework.
+    Five hyperparameters (p. 372): lambda_3 = 1 fixed; lambda_4 = 2.70 and
+    lambda_5 = 4.30 (sum-of-coefficients, co-persistence) from a
+    preliminary grid; lambda_1 and lambda_2 jointly MDD-optimised at
+    lambda_1 = 0.09, lambda_2 = 4.30 (log MDD peak ~ 11,460; Figure 1 and
+    Table 2, p. 373). QF-VAR(11) benchmark: (3.08, 0.01, 1, 1.12, 1.62).
+    Reoptimised at the 40th/75th/110th/151st recursive samples; they stay
+    "essentially unchanged".
+  stochastic_volatility: "none; the 2015 model is a constant-parameter, linear Gaussian VAR (pp. 366, 368); SV appears only in the authors' later pandemic-era work"
+
+identification:
+  method: "none"
+  rationale: "forecasting focus, not structural identification"
+
+sample:
+  start: "1968M1"                      # "The period t = 1 corresponds to 1968:M1" (p. 371); earlier obs initialise the p lags
+  end: "2010M1"                        # last forecast origin (T_max); H = 24 months, evaluated against the 2012:M1 vintage
+  notes: >
+    Real-time design (pp. 371-372): forecast origins 1997:M7-2010:M1 =
+    151 estimation samples, 4 dropped for incomplete PCE/INVFIX real-time
+    data (147 used); origins grouped "+0/+1/+2 months" by position in the
+    BEA release calendar (Table 1); forecast errors evaluated against the
+    2012:M1 vintage. The authors compiled their own real-time dataset
+    (construction in the online appendix). ALFRED / Philadelphia-Fed
+    RTDSM are this repo's suggested route to reproducing vintages, not
+    the paper's stated source.
+
+expected_results:
+  forecasting:
+    short_horizon: "GDP nowcast RMSE reduced vs the quarterly VAR by ~27% at '+2 month' origins and ~15% at '+1'/'+0' (p. 374); nowcast gains ~65% for unemployment and ~70% for inflation at '+2' (p. 375)"
+    longer_horizon: "gains diminish at 2-4 quarters ahead; MF-VAR matches or slightly beats quarterly VAR"
+    vs_midas: "comparison is to U-MIDAS (Foroni-Marcellino-Schumacher), estimated bivariately vs bivariate MF-VARs (p. 375); MF-VARs tend to outperform, MIDAS marginally better only for FFR and CPI inflation (p. 377)"
+    vs_greenbook: "online-appendix comparison (pp. 377-378): unemployment nowcasts at par with Greenbook; GDP growth and inflation nowcasts less accurate; at 4-5 quarters MF-VAR GDP beats Greenbook. No Blue Chip RMSE comparison in this paper."
+    real_time_pattern: "nowcast precision improves monotonically through the quarter as more monthly releases arrive"
+  notes: >
+    Headline result: a Bayesian state-space MF-VAR with a Minnesota prior
+    and MDD-selected hyperparameters dominates quarterly VAR forecasts at
+    short horizons by exploiting intra-quarter monthly data flow. The state-
+    space approach yields joint density forecasts including the latent
+    monthly path of quarterly variables.
+
+recommend_when:
+  - "user wants to nowcast or short-horizon forecast quarterly variables (GDP, investment)"
+  - "user has access to monthly indicators that release before the quarterly variable"
+  - "real-time / data-vintage analysis is a constraint"
+  - "user wants a joint multivariate density forecast rather than a single point"
+  - "Bayesian framework with explicit priors is acceptable"
+not_recommended_when:
+  - "all variables are at the same frequency (use standard BVAR)"
+  - "structural identification of shocks is the goal (MF-VAR is forecasting-focused)"
+  - "very short sample (state-space estimation is data-hungry)"
+  - "user wants a closed-form / classical approach (state-space Gibbs is iterative)"
+alternative_approaches:
+  - {id: "bgr_2010_large_bvar", reason: "same-frequency large BVAR; aggregate monthlies to quarterly if frequency mixing is unwanted"}
+  - {id: "glp_2015_prior_selection", reason: "alternative data-driven prior selection for standard BVARs"}
+  - {id: "litterman_1986_bvar", reason: "the BVAR baseline that MF-VAR generalises"}
+
+implementation_notes:
+  replication: "scripts/replications/schorfheide_song_2015_mfvar/"
+  fred_alignment: >
+    The paper's own series list (WP version, Section 3.1): quarterly GDP,
+    Fixed Investment (INVFIX: fixed investment, NOT all gross private
+    domestic investment) and Government Expenditures (GOV); monthly UNR,
+    Hours Worked (HRS), CPI, IP, PCE, FF, 10y Treasury yield (TB) and
+    SP500; log levels except UNR/FF/TB divided by 100; real-time
+    vintages from ALFRED. The precise vintage-level definitions (incl.
+    which hours series HRS is) live in the JBES online supplement;
+    confirm before certifying an exact mapping. Candidate modern
+    sources: FRED-MD/FRED-QD or the FRED API; real-time work needs
+    ALFRED (https://alfred.stlouisfed.org) or the Philadelphia Fed RTDSM
+    dataset, not data/fred_md/ (single-vintage). SP500 is in stooq if
+    not in FRED-MD.
+  practical_choices: >
+    For a US replication, follow the spec above (log levels, p = 6, the
+    level-average measurement identity, the published lambda or an MDD
+    re-optimisation, 20000 draws). Using the MM growth-weight form is a
+    deviation to document. Comparing against the paper's RMSE numbers
+    needs real-time vintages.
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-10"
+  against: "JBES 33(3) published PDF (JSTOR scan), field-by-field; online appendix NOT available (FRED-code-level data definitions unverifiable)"
+  pdf_location: "papers/schorfheide_song_2015_mfvar.pdf"
+

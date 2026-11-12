@@ -1,0 +1,195 @@
+id: "banbura_giannone_lenza_2015_conditional_forecasts"
+citation:
+  authors: "Bańbura, Giannone, Lenza"
+  year: 2015
+  title: "Conditional Forecasts and Scenario Analysis with Vector Autoregressions for Large Cross-Sections"
+  journal: "International Journal of Forecasting"
+  volume: "31"
+  issue: "3"
+  pages: "739-756"
+
+research_questions:
+  - "computing conditional forecasts in large BVARs and DFMs"
+  - "scenario analysis with VARs (what if oil prices double?)"
+  - "policy counterfactuals using estimated VARs"
+  - "joint density forecasts conditional on future paths of selected variables"
+  - "forecasting one variable given an assumed path of another"
+tags:
+  - conditional_forecasts
+  - scenario_analysis
+  - bvar
+  - dfm
+  - large_systems
+  - kalman_filter
+  - state_space
+  - counterfactuals
+  - euro_area
+  - canonical
+  - forecasting
+
+model:
+  class: "bvar"                  # methodology also applies to DFMs and other state-space VARs
+  prior: "minnesota + sum-of-coefficients + dummy-initial-observation, JOINTLY, with hierarchical (GLP-style) hyperpriors"  # all three together, not alternatives (Sec. 2.2, App. B.2)
+  variables:
+    endogenous:
+      # Paper's empirical application: 26 Euro-area quarterly macro/financial indicators
+      - {name: "real GDP (EA)", role: "output"}
+      - {name: "consumption (EA)", role: "demand component"}
+      - {name: "investment (EA)", role: "demand component"}
+      - {name: "government consumption (EA)", role: "fiscal"}
+      - {name: "exports / imports (EA)", role: "external sector"}
+      - {name: "HICP / GDP deflator (EA)", role: "prices"}
+      - {name: "unemployment rate (EA)", role: "labour"}
+      - {name: "Euribor / policy rate", role: "monetary policy"}
+      - {name: "long-term yield (EA)", role: "long rate"}
+      - {name: "M3 / M1", role: "money"}
+      - {name: "stock prices (Eurostoxx)", role: "asset prices"}
+      - {name: "exchange rate (EUR effective)", role: "FX"}
+      - {name: "many more (26 variables in total)", role: "broad macro/financial coverage"}
+    exogenous: []
+    note: >
+      The paper estimates two BVAR variants (levels and log-differences)
+      plus a DFM on the same 26-variable EA quarterly panel. Methodology
+      is general and works for any (B)VAR or DFM in state-space form.
+  lags: "5 (BVAR in levels) / 4 (BVAR in differences); DFM: 3 factors with a VAR(4) on the factors, ML/EM (p. 746)"
+  frequency: "quarterly"
+
+methodology:
+  approach: "kalman_filter_conditional_forecasts"
+  key_innovation: >
+    Computing conditional forecasts in a VAR (the distribution of
+    y_{t+1}, ..., y_{t+h} given that some elements of those vectors take
+    pre-specified values) is computationally heavy in large systems
+    under the Waggoner-Zha (1999) Gibbs approach. Building on "an old
+    insight of Clarida and Coyle (1984)" (p. 740), BGL cast the
+    conditioning paths as observed data (the rest missing) in a
+    state-space form: the Kalman filter makes the problem "recursive",
+    so "the size of the largest matrix to be inverted is independent of
+    the forecast horizon" (p. 745). The Kalman smoother gives the
+    conditional EXPECTATION analytically (given parameters); the full
+    conditional DISTRIBUTION comes from posterior parameter draws plus
+    a simulation smoother.
+  algorithm: >
+    Per posterior draw (Sec. 3.2, p. 745):
+    1. Cast the VAR in state-space companion form (the paper's state
+       includes the intercept; measurement noise R_t := 0 for a VAR);
+       conditioning values at any horizons (including linear
+       combinations W_t Z_t) are the observed entries, everything else
+       is missing data (ragged-edge treatment, Durbin-Koopman 2001).
+    2. Draw VAR parameters from the posterior. NB which posterior: full
+       conditional predictive draws require the parameter posterior to
+       incorporate the conditioning information (the paper's fn 13
+       describes iterating with imputed conditional forecasts treated as
+       data); drawing from the historical-data-only posterior is a
+       common approximation and should be labeled as such. A
+       fixed-parameter smoother is valid for its narrower target.
+    3. Draw the latent states with a SIMULATION SMOOTHER; the paper
+       adopts Durbin-Koopman (2002) with the de Jong (1988) Kalman
+       smoother, which "offers large computational gains compared to
+       the algorithm of Carter and Kohn (1994)" (p. 745); Appendix A:
+       at 25 conditioning variables x 60 periods, Waggoner-Zha needs
+       ~11 hours per 1000 draws vs 1-7 minutes for DK-deJong (p. 752).
+    4. Read off the conditioned observables; across draws this is the
+       conditional predictive distribution.
+
+types_of_conditional_forecast:
+  unconditional:
+    description: "Standard h-step forecast: what does the model predict?"
+    method: "iterate VAR forward with zero future shocks (mean) or draw future shocks (density)"
+  conditional_on_future_path:
+    description: "What does the model predict for output and inflation if the policy rate follows path R_{t+1}, ..., R_{t+h}?"
+    method: "Kalman smoother treats R_{t+h} = r_h as 'observed' for h = 1, ..., h"
+    note: "Conditioning variables can be at any subset of horizons (not just t+1, ..., t+H)"
+  scenario_via_shock_identification:
+    description: "Structural scenario: only a subset of identified shocks is allowed to be active over the scenario window (Sec. 3.4, pp. 745-746)"
+    method: >
+      Replace the innovation covariance Sigma with Sigma_bar =
+      gamma_{s+1} gamma'_{s+1} + ... + gamma_n gamma'_n over the
+      forecast window, i.e. the EXCLUDED shocks are SET TO ZERO and
+      the retained shocks drive everything (the paper implements the
+      +0.1pp world-GDP scenario this way, which coincides with a
+      generalised IRF, eq. 6). NB fn. 17's caveat: the conditioning
+      path must be compatible with the retained shocks.
+    distinction: >
+      Reduced-form conditioning lets ALL shocks generate the path;
+      the structural scenario switches the excluded shocks off. (The
+      paper does not use 'hard'/'soft' terminology; both its modes are
+      exact-path conditioning.)
+
+identification:
+  method: "varies"
+  rationale: >
+    Conditional forecasts work for any (B)VAR regardless of identification.
+    For pure conditional forecasts (e.g., density of GDP given Euribor
+    path) no identification is needed. For SHOCK-IDENTIFIED scenarios
+    (e.g., 'this Euribor path arose only from monetary shocks'),
+    Cholesky / sign / IV identification is layered on top.
+
+sample:
+  start: "1995Q1"
+  end: "2012Q4"
+  notes: >
+    "The sample covers the period from 1995Q1 to 2012Q4" (p. 746):
+    one sample, one 26-variable EA application (AWM database 13th
+    update + ECB SDW / Datastream / IMF IFS). The conditional-forecast
+    exercise estimates parameters on 1995-2007 and produces conditional
+    forecasts over 1997-2012, splitting in-sample (1997-2007) from
+    out-of-sample (2008-2012) (p. 750).
+
+expected_results:
+  forecast_accuracy:
+    headline_1: "\"only a small number of sources drive the bulk of the fluctuations in the euro area economy\"; conditioning on just real GDP, HICP and the short rate tracks the realised paths of most of the 26 variables (abstract; Secs. 4.5-5)"
+    headline_2: "economic relationships stayed broadly STABLE through the 2008-12 crisis, with money and credit (loans, M3) more subdued than conditionally predicted (p. 750); widest misses: wages, GDP deflator, government consumption, effective exchange rate (fn. 28)"
+    bvar_vs_dfm: "the three models (BVAR levels, BVAR differences, DFM) deliver similar, highly correlated forecasts on the EA panel (Fig. 1, p. 747); the predictive DISTRIBUTION is shown only for the BVAR in levels"
+    unconditional_benchmark: "unconditional forecasts evaluated against random walk with drift at h = 1, 2, 4, evaluation 2004-2012 (Table 1)"
+  scenario_analysis:
+    typical_use_case: "conditional forecast for GDP and inflation given a stress-test policy path or oil price scenario"
+  notes: >
+    The paper's contribution is computational: a clean analytical
+    framework for conditional density forecasts in large VARs.
+    The empirical message is that the EA-26 BVAR delivers reasonable
+    conditional forecasts and is feasible at scale.
+
+recommend_when:
+  - "user wants to forecast variables conditional on assumed paths of other variables"
+  - "scenario analysis: 'what if oil doubles?', 'what if Fed holds rates flat?'"
+  - "policy counterfactuals using estimated VAR"
+  - "user has a medium-to-large BVAR (5-30+ variables)"
+  - "monetary policy or fiscal scenarios for communication / reporting"
+not_recommended_when:
+  - "user wants pure structural counterfactual without an estimated VAR (use a DSGE)"
+  - "scenario involves regime change that the VAR sample doesn't cover (Lucas critique)"
+  - "very small VAR (3 variables) where simulation is trivially fast, so this is overkill"
+  - "user wants identified-shock-only conditional forecast and identification is contested"
+alternative_approaches:
+  - {id: "litterman_1986_bvar", reason: "baseline BVAR; conditional forecasts are an extension on top"}
+  - {id: "schorfheide_song_2015_mfvar", reason: "mixed-frequency framework also produces conditional forecasts naturally"}
+  - {id: "primiceri_2005_tvpvar", reason: "TVP-VAR estimation with scenarios conditional on the final-period coefficients; the shipped forecast interface does not propagate future coefficient drift"}
+
+implementation_notes:
+  replication: "scripts/replications/banbura_giannone_lenza_2015_conditional_forecasts/"
+  hierarchical_hyperpriors: >
+    The paper treats the prior tightness as RANDOM, a la Giannone-
+    Lenza-Primiceri: lambda ~ Gamma(mode 0.2, sd 0.4); Psi ~
+    inverse-Gamma(scale = shape = 0.02^2); mu, delta ~ Gamma(mode 1,
+    sd 1); Sigma-prior dof = n + 2; hyperparameters sampled by
+    Metropolis-Hastings; 25,000 draws, 5,000 burn-in (App. B.2,
+    fns. 23/27). Fixed-lambda implementations should present their
+    values as the hyperprior MODES, not "the paper's values". NB the
+    conjugate prior has NO cross-variable tightness knob (lambda_2
+    has no counterpart in the paper's prior, p. 743).
+  data_alignment_with_repo: >
+    The replication uses a US CEE-style 7-variable quarterly BVAR on
+    FRED-QD (1965-2019), not the paper's 26-variable EA panel. The method
+    is variable-agnostic.
+  shock_identified_scenarios: >
+    lib.conditional_forecast pins paths of observables only; structural
+    scenarios that switch off excluded shocks (Sec. 3.4) are not
+    implemented.
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-10"
+  against: "IJF 31(3) published PDF (Elsevier), field-by-field"
+  pdf_location: "papers/banbura_giannone_lenza_2015_conditional_forecasts.pdf"
+

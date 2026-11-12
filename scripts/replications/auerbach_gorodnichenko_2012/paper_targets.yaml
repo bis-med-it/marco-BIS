@@ -1,0 +1,70 @@
+# Paper-target validation for Auerbach-Gorodnichenko (2012) replication.
+#
+# AG 2012 (AEJ:EP) estimate state-dependent fiscal multipliers with a
+# smooth-transition VAR (STVAR); this replication substitutes a
+# state-dependent local projection. Headline (Table 1, p. 9; sample
+# 1947:I-2008:IV, p. 6): maximum output multiplier 2.48 in recession vs 0.57
+# in expansion (cumulative measure 2.24 vs -0.33).
+#
+# Result in this sample: over FRED-QD's available sample
+# starting 1959Q1, the sign of regime-dependence REVERSES: the expansion
+# multiplier exceeds the recession multiplier. See the README section
+# "Divergence from AG's headline"; sample, estimator and
+# tax-variable differences cannot be separated.
+
+targets:
+  - description: "Sample size (FRED-QD post-1959, pre-2009 sample)"
+    location: "config.yaml: 1959Q1-2008Q4 = 200 quarters"
+    paper_value: 200.0
+    paper_units: "count (quarters)"
+    our_key: "n_obs"
+    tolerance: 8.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of variables (3-var fiscal VAR: gdp, g, tax)"
+    location: "config.yaml; AG's baseline X_t = [G T y]' (p. 4)"
+    paper_value: 3.0
+    paper_units: "count"
+    our_key: "n_vars"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "LP lags"
+    location: "Replication choice (4 quarterly lags); AG do not state their lag count"
+    paper_value: 4.0
+    paper_units: "count"
+    our_key: "n_lags"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Share of quarters with F(z) > 0.5 (replication value)"
+    location: "Replication output. AG §I, p. 5: gamma = 1.5 gives about 20 percent of time in recession, defined as F(z) > 0.8; our threshold is 0.5, so the two are not comparable"
+    paper_value: 0.40
+    paper_units: "rate (share of quarters with F > 0.5)"
+    our_key: "recession_share"
+    tolerance: 0.20
+    tolerance_kind: "absolute"
+
+  - description: "Expansion multiplier at h=4 is positive (sensible direction)"
+    location: "Our sign check (fiscal stimulus raises output in expansion); consistent with AG Fig. 2 (p. 7) at h=4"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "expansion_h4_positive"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "AG-style ratio of recession to expansion multiplier at h=8 (result in this sample: REVERSED on FRED-QD post-1959)"
+    location: "README: sign flips vs AG 2012 (1947-2008) on the truncated FRED-QD sample"
+    paper_value: 0.34
+    paper_units: "ratio"
+    our_key: "ratio_R_over_E_h8"
+    tolerance: 0.40
+    tolerance_kind: "absolute"
+
+  - description: "lib.state_dependent_lp_irf returns populated LP outputs"
+    location: "Replication check: LP outputs populated for gdp, g and tax"
+    paper_value: 1.0
+    paper_units: "indicator (1.0 = IRF dicts populated for gdp, g, tax)"
+    our_key: "lp_outputs_populated"
+    tolerance: 0.0
+    tolerance_kind: "absolute"

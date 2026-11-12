@@ -1,0 +1,73 @@
+# Paper-target validation for Gertler-Karadi (2015) proxy-SVAR replication.
+#
+# GK 2015 (AEJ:Macro) identifies monetary policy shocks via high-frequency
+# instruments (federal funds futures around FOMC announcements). Original
+# sample: 1979-2012. Our replication EXTENDS the sample through 2024
+# (using JK monetary-shock series) and SUBSTITUTES the BAA-AAA spread
+# for the Excess Bond Premium (EBP not in FRED-MD).
+#
+# Result in this sample (extended sample): the first-stage F-stat is
+# below 10, so the instrument is weak. The post-2009 sample includes
+# long ZLB periods where the high-frequency shock is near zero, which
+# may contribute. Some IRF signs differ from the original sample
+# (output rises rather than contracts); with a weak instrument the
+# IRF estimates are unreliable.
+#
+# Targets pin structural sanity checks and the weak-instrument result.
+
+targets:
+  - description: "Sample size (months in merged VAR + instrument)"
+    location: "JK shock series 1990-2024 intersected with FRED-MD: ~404 months"
+    paper_value: 404.0
+    paper_units: "count"
+    our_key: "n_obs"
+    tolerance: 10.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of variables (matches GK 4-var system with EBP substitute)"
+    location: "GK 2015 Section III, p. 55 (simple VAR; Fig. 1, p. 61): indpro, cpi, gs1, EBP"
+    paper_value: 4.0
+    paper_units: "count"
+    our_key: "n_vars"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "VAR lag order"
+    location: "GK replication archive / online appendix (lag order is NOT stated in the published text)"
+    paper_value: 12.0
+    paper_units: "count"
+    our_key: "n_lags"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Max |eigenvalue| of companion matrix (near unit root acceptable)"
+    location: "Our stability diagnostic (the paper reports no companion eigenvalues)"
+    paper_value: 1.0
+    paper_units: "modulus"
+    our_key: "max_eig_modulus"
+    tolerance: 0.05
+    tolerance_kind: "absolute"
+
+  - description: "First-stage F-statistic (result in this sample: weak on the extended sample)"
+    location: "README §'What the proxy-SVAR mechanics produce'; regression baseline from an earlier run of this replication. The PAPER's FF4 first-stage F is 21.5 (robust 17.5), p. 61"
+    paper_value: 9.0
+    paper_units: "F-stat"
+    our_key: "first_stage_F"
+    tolerance: 3.0
+    tolerance_kind: "absolute"
+
+  - description: "Weak-instrument flag triggered (F < 10)"
+    location: "Threshold of ten used by the paper (p. 59, citing Stock et al. 2002); extended sample falls below"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "weak_instrument_flagged"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "GS1 peak |response| within 0.5-2.5 pp of a unit-normalised shock (substantial first-stage)"
+    location: "Unit-policy normalisation check (lib convention): GS1 = +1pp at impact by construction. NB the PAPER reports one-SD shocks: ~25 bp in the 4-variable VAR (Fig. 1, p. 61) and ~20 bp in the 6-variable baseline (p. 63, Fig. 2 p. 64). This is not a paper magnitude"
+    paper_value: 1.5
+    paper_units: "pp"
+    our_key: "gs1_peak_abs"
+    tolerance: 1.0
+    tolerance_kind: "absolute"

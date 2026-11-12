@@ -1,0 +1,89 @@
+# API connections for runtime data collection
+# Set API keys as environment variables, not in this file
+
+connections:
+
+  fred:
+    provider: "Federal Reserve Bank of St. Louis"
+    api_endpoint: "https://api.stlouisfed.org/fred"
+    api_key_env: "FRED_API_KEY"
+    rate_limit: "120 requests per minute"
+    package: "fredapi"
+    documentation: "https://fred.stlouisfed.org/docs/api/fred/"
+    get_key_at: "https://fred.stlouisfed.org/docs/api/api_key.html"
+
+  ecb_sdw:
+    provider: "European Central Bank"
+    api_endpoint: "https://data-api.ecb.europa.eu/service/data"
+    api_key_env: null
+    rate_limit: "reasonable use"
+    package: "sdmx"
+    documentation: "https://data.ecb.europa.eu/help/api/overview"
+    # NOTE: this catalogs the source; it is NOT an implemented lib fetcher.
+    # The implemented no-key route to ECB/Eurostat series is
+    # lib.fetch_data(api="dbnomics"); prefer it unless you specifically
+    # need an SDMX feature dbnomics doesn't mirror.
+
+  imf:
+    provider: "International Monetary Fund"
+    api_endpoint: "https://data.imf.org"   # new portal (SDMX REST); legacy dataservices.imf.org retired
+    api_key_env: null
+    rate_limit: "see portal terms"
+    package: "imfp (>=2, new-portal API)"
+    documentation: "https://data.imf.org (portal docs)"
+
+  bis:
+    provider: "Bank for International Settlements"
+    api_endpoint: "https://stats.bis.org/api/v2"
+    api_key_env: null
+    rate_limit: "reasonable use"
+    package: "sdmx"
+    documentation: "https://stats.bis.org/api-doc/v2/"
+
+  oecd:
+    provider: "Organisation for Economic Co-operation and Development"
+    api_endpoint: "https://sdmx.oecd.org/public/rest"
+    api_key_env: null
+    rate_limit: "reasonable use"
+    package: "sdmx"
+    documentation: "https://data.oecd.org/api/"
+
+  world_bank:
+    provider: "World Bank"
+    api_endpoint: "https://api.worldbank.org/v2"
+    api_key_env: null
+    rate_limit: "reasonable use"
+    package: "wbgapi"
+    documentation: "https://datahelpdesk.worldbank.org/knowledgebase/articles/889392"
+
+  atlantafed_cqer:
+    provider: "Federal Reserve Bank of Atlanta, Center for Quantitative Economic Research"
+    api_endpoint: null            # static file host, no API
+    api_key_env: null
+    rate_limit: "reasonable use"
+    package: null                 # pandas.read_excel on the downloaded file
+    documentation: "https://www.atlantafed.org/cqer/research/wu-xia-shadow-federal-funds-rate"
+    cache_policy: "static"        # Wu-Xia updates suspended March 2022 (FOMC liftoff)
+    files:
+      wu_xia_shadow_rate:
+        url: "https://www.atlantafed.org/-/media/Project/Atlanta/FRBA/Documents/datafiles/cqer/research/wu-xia-shadow-federal-funds-rate/WuXiaShadowRate.xlsx"
+        format: "xlsx"
+        sheet: "Data"
+        columns: ["date", "effective federal funds rate (eom)", "wu-xia shadow rate (eom)"]
+        coverage: "1960M1-2022M2 (shadow-rate column populated 1990M1-2022M2)"
+        frequency: "monthly, last business day"
+        notes: >
+          Use the URL above exactly: it contains the
+          '/Project/Atlanta/FRBA/Documents/' path segment, and other variants
+          return an HTML error page that pandas rejects as "Excel file format
+          cannot be determined". If the download is refused, download the
+          file in a browser and stage it under data/staging/. Check the
+          content type before parsing.
+
+
+# my_central_bank:
+#   provider: "Central Bank of [Country]"
+#   api_endpoint: "https://..."
+#   api_key_env: "MY_CB_API_KEY"
+#   package: null
+#   documentation: "..."

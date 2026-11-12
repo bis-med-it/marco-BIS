@@ -1,0 +1,115 @@
+id: "bgr_2010_large_bvar"
+citation:
+  authors: "Bańbura, Giannone, Reichlin"
+  year: 2010
+  title: "Large Bayesian Vector Auto Regressions"
+  journal: "Journal of Applied Econometrics"
+  volume: "25"
+  pages: "71-92"
+
+research_questions:
+  - "forecasting with many variables"
+  - "large-dimensional BVARs"
+  - "BVAR vs FAVAR (factor-augmented VAR)"
+  - "scaling shrinkage with model size"
+tags:
+  - bvar
+  - large_systems
+  - minnesota_prior
+  - forecasting
+  - us_macro
+  - dimension_reduction
+
+model:
+  class: "bvar"
+  prior: "minnesota"
+  variables:
+    # Paper (p. 6; Table I, p. 8) uses FOUR system sizes on monthly US data:
+    #   SMALL (3): employment (nonfarm payrolls), CPI, federal funds rate
+    #   CEE (7): SMALL + commodity/sensitive-material prices, non-borrowed
+    #            reserves, total reserves, M2 (the CEE 1999 monetary system)
+    #   MEDIUM (20): CEE + 13 more macro indicators
+    #   LARGE (131): the full Stock-Watson (2005) panel
+    # The benchmark forecast trio for calibration is {employment, CPI, FFR}.
+    endogenous:
+      - {name: "varies", role: "paper tests four system sizes: 3 / 7 / 20 / 131 variables"}
+    exogenous: []
+  lags: 13
+  frequency: "monthly"
+  hyperparameters:
+    # Normal-inverted-Wishart Minnesota prior via dummy observations
+    # (Kadiyala-Karlsson 1997 / Sims-Zha 1998). The only tuned scalar is the
+    # overall tightness lambda; lag decay is fixed at 1/k^2 (not tunable).
+    # The cross-variable weight is theta = 1: the conjugate normal-inverted-
+    # Wishart formulation forces symmetric (Kronecker) shrinkage, and the
+    # paper fixes theta = 1 for everything that follows (p. 74). Own-first-
+    # lag prior means: delta_i = 1 for variables treated as nonstationary,
+    # delta_i = 0 for stationary ones. (Litterman-style lambda_2 / lambda_3
+    # have no BGR counterpart.)
+    lambda: "set by the scaling rule below; reported (Table I, p. 78): SMALL=infinity (no shrinkage), CEE=0.262, MEDIUM=0.108, LARGE=0.035"
+    sum_of_coefficients_tau: "tau = 10*lambda (an extra prior, p. 10-11; needed to keep large-model IRFs non-explosive)"
+    scaling_rule: >
+      The main point (p. 7-8): as the system grows, SHRINK MORE -- choose
+      lambda so the large model's average in-sample one-step-ahead fit (MSFE
+      over {employment, CPI, FFR} relative to a random-walk benchmark) equals
+      the fit of the SMALL 3-variable VAR estimated by OLS. In BGR's
+      parameterization lambda -> 0 is tightest and lambda -> infinity is OLS,
+      so larger N means SMALLER lambda (more shrinkage): 1 -> 0.262 -> 0.108
+      -> 0.035 (Table I).
+
+identification:
+  method: "cholesky"   # applies to the structural half of the paper (Section 4); Sections 2-3 are forecasting
+  rationale: >
+    The paper has two halves. Sections 2-3 are forecasting (no identification).
+    Section 4 is a STRUCTURAL analysis: a recursive/Cholesky monetary-policy
+    shock with a slow/fast ordering (a la BBE 2005 / CEE 1999), +100bp FFR
+    shock, IRFs + variance decomposition -- larger systems resolve the price
+    puzzle.
+
+sample:
+  start: "1959M1"
+  end: "2003M12"
+  notes: >
+    Monthly US macro data Jan 1959-Dec 2003 (p. 6). Forecast-evaluation
+    origins Jan 1970-Dec 2003 ("T0 = January 70 until T1 = December 03",
+    p. 76; 10-year rolling estimation window; overall tightness matched
+    to fit over the pre-evaluation window Jan 1960-Dec 1969); structural
+    analysis 1961-2002 (p. 13).
+
+expected_results:
+  forecasting:
+    small_vs_large: "large BVARs match or outperform small BVARs when shrinkage is calibrated; most gains realized already by the MEDIUM (20-var) system"
+    bvar_vs_favar: "large BVARs competitive with the BBE 2005 FAVAR (the paper's actual head-to-head; the Stock-Watson dataset is used, but the rival model is a FAVAR, not a pure DFM)"
+    scaling: "without increasing shrinkage, large BVARs overfit and forecast poorly"
+  structural:
+    price_puzzle: "larger systems attenuate/resolve the price puzzle (Section 4)"
+  notes: >
+    The practical takeaway: you CAN use 20+ variables in a BVAR if you tighten
+    the prior appropriately, and such large BVARs are also suitable for
+    structural analysis (the paper's abstract).
+
+recommend_when:
+  - "user wants to include 10-20+ variables"
+  - "forecasting with a data-rich environment"
+  - "comparing BVAR vs factor models"
+  - "user asks whether adding more variables helps"
+not_recommended_when:
+  - "many structural shocks must be identified jointly (BGR identify only the policy shock, through a slow/fast block ordering)"
+  - "sample is very short: even tight priors can't save a 20-variable monthly VAR with 50 observations"
+alternative_approaches:
+  - {id: "glp_2015_prior_selection", reason: "for formal hyperparameter optimisation in medium BVARs"}
+  - {id: "litterman_1986_bvar", reason: "for smaller systems where default hyperparameters suffice"}
+
+implementation_notes:
+  replication: "scripts/replications/bgr_2010_large_bvar/"
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-03"
+  against: "original paper (Banbura, Giannone & Reichlin 2010, JAE 25(1), 71-92)"
+  pdf_location: "papers/bgr_2010_large_bvar.pdf"
+  notes: >
+    The replication is a method demo of the scaling rule on a FRED-MD subset
+    (3/7/17 variables, 1959-2019), not the paper's 3/7/20/131 systems; see
+    the replication README.
+

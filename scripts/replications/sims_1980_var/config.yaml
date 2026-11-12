@@ -1,0 +1,80 @@
+# Replication config for Sims (1980).
+# Mirrors the dictionary entry at:
+#   skills/model-dictionary/entries/sims_1980_var.yaml
+
+replication:
+  id: "sims_1980_var"
+  title: "Sims (1980) VAR Replication"
+  subtitle: "Six-variable VAR(4), Cholesky identification, FRED-QD quarterly data"
+
+# --- Data ---
+# Three-stage pipeline:
+#   1. series       -> lib.load_dataset (raw level series)
+#   2. preprocess   -> lib.preprocess (cross-series ops; here: nominalise m1)
+#   3. transforms   -> lib.transform (per-column univariate transforms)
+data:
+  source: "fred_qd"
+  # Sims's US fit period is 1949-75 (paper p. 18). FRED-QD starts 1959Q1,
+  # so the replication is truncated to 1959Q1-1975Q4 (68 obs); the pre-1959
+  # start is unreachable from FRED-QD. End matches the paper's 1975.
+  sample_start: "1959-01-01"
+  sample_end: "1975-12-31"
+
+  # 1. Raw series to load (level, no transform)
+  series:
+    - {name: "m1_real",       fred_code: "M1REAL"}
+    # CPI is the index FRED uses to BUILD M1REAL (M1SL / CPIAUCSL), so it
+    # is the only index that correctly reverses the deflation. Using the
+    # GDP deflator here would leave a relative-price component in money.
+    - {name: "cpi_for_m1",    fred_code: "CPIAUCSL"}
+    - {name: "rgdp",          fred_code: "GDPC1"}
+    - {name: "unemp",         fred_code: "UNRATE"}
+    - {name: "wages",         fred_code: "CES0600000008"}
+    - {name: "deflator",      fred_code: "GDPCTPI"}
+    - {name: "import_prices", fred_code: "WPSID61"}
+
+  # 2. Cross-series preprocess (nominal m1 = real m1 * deflator / 100)
+  preprocess:
+    - {operation: "nominalise", real: "m1_real", deflator: "cpi_for_m1", output: "m1"}
+
+  # 3. Per-column transforms for the final VAR variables
+  transforms:
+    m1:            "log"
+    rgdp:          "log"
+    unemp:         "level"
+    wages:         "log"
+    deflator:      "log"
+    import_prices: "log"
+
+  # Variable order (Cholesky ordering)
+  variable_order: ["m1", "rgdp", "unemp", "wages", "deflator", "import_prices"]
+
+  variable_labels:
+    m1:            "M1 Money Supply"
+    rgdp:          "Real GDP"
+    unemp:         "Unemployment Rate"
+    wages:         "Wages"
+    deflator:      "GDP Deflator"
+    import_prices: "Import Prices (proxy: PPI Intermediate Materials, WPSID61)"
+
+# --- Model ---
+model:
+  class: "var"
+  lags: 4
+  trend: "ct"                     # Sims p. 18: "the regressions all included time trends" (constant + linear trend)
+
+# --- Identification ---
+identification:
+  method: "cholesky"
+  ordering: ["m1", "rgdp", "unemp", "wages", "deflator", "import_prices"]
+
+# --- IRF ---
+irf:
+  horizon: 40                     # quarters
+  bands: "asymptotic_mc"
+  n_draws: 2000
+  credible_intervals: [0.68, 0.90]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

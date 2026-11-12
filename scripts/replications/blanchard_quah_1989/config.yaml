@@ -1,0 +1,63 @@
+# Replication config for Blanchard-Quah (1989).
+# Mirrors the dictionary entry at:
+#   skills/model-dictionary/entries/blanchard_quah_1989.yaml
+
+replication:
+  id: "blanchard_quah_1989"
+  title: "Blanchard-Quah (1989) Demand vs Supply Shocks"
+  subtitle: "Two-variable VAR with long-run identification; quarterly US GDP growth and unemployment"
+
+# --- Data ---
+data:
+  source: "fred_qd"
+  file: "data/fred_qd/dataset.csv"
+  # Paper US sample is 1950Q2-1987Q4 (p. 661). FRED-QD starts 1959Q1, so the
+  # replication data window is 1959Q1-1987Q4.
+  sample_start: "1959-01-01"        # FRED-QD floor; paper is 1950Q2 (unreachable from FRED-QD)
+  sample_end: "1987-12-31"          # 1987Q4 (paper endpoint)
+  series:
+    # UNRATE is a proxy for BQ's actual series (the SA unemployment rate for
+    # MALES age 20+, paper fn 5), which is not in FRED-QD.
+    - {name: "dlog_gdp", fred_code: "GDPC1",  transform: "dlog_x_100"}
+    - {name: "unrate",   fred_code: "UNRATE", transform: "level"}
+  variable_labels:
+    dlog_gdp: "Real GDP Growth"
+    unrate:   "Unemployment Rate"
+  # DATA TREATMENT. This replication uses BQ's "case (c)": raw series with a
+  # VAR constant (no break-demeaning of output growth, no detrending of
+  # unemployment). Case (c) is one of the paper's own reported treatments
+  # (p. 662) and is the declared default for this adaptation. The base
+  # case's 1974Q1 break and linear unemployment detrending were chosen for
+  # BQ's 1950Q2-1987Q4 sample and male-unemployment series, not the FRED-QD
+  # proxies used here (1959Q1 start, total UNRATE, real GDP). On this
+  # sample the base case gives a negative permanent supply effect (README
+  # "Specification notes"); replicate.py does not run it.
+
+# --- Model ---
+model:
+  class: "var"
+  lags: 8                          # BQ used 8 quarterly lags (p. 661)
+  trend: "c"                       # case (c): VAR constant on raw series
+
+# --- Identification ---
+identification:
+  method: "long_run"
+  # Supply shock first, demand shock second. The lower-triangular
+  # long-run constraint then forces the demand shock to have zero
+  # long-run effect on real GDP growth (= zero permanent effect on
+  # log real GDP level).
+  shock_names: ["supply", "demand"]
+  sign_normalization:
+    supply:  {dlog_gdp: +1}        # supply shock raises output growth on impact
+    demand:  {dlog_gdp: +1}        # demand shock raises output growth on impact
+
+# --- IRF ---
+irf:
+  horizon: 40                      # quarters
+  bands: "parameter_draws"
+  n_draws: 2000
+  credible_intervals: [0.68, 0.90]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

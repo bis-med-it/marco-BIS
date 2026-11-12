@@ -1,0 +1,67 @@
+# Paper-target validation for Rigobon (2003) heteroskedasticity-ID replication.
+#
+# Rigobon 2003 (REStat) introduced identification through
+# heteroskedasticity: shifts in the variances of the structural shocks
+# across regimes identify the contemporaneous matrix, and two regimes
+# just-identify the system when there are no common shocks (§II). The
+# paper's application (§V, pp. 784-86) uses six crisis windows plus
+# tranquil periods, one common shock and GMM estimation. This
+# replication uses the generalised eigendecomposition of (Sigma_1,
+# Sigma_2), the standard closed form for the two-regime case without
+# common shocks, which recovers H up to column scaling; it is not the
+# paper's estimator.
+#
+# This replication SUBSTITUTES US recessions for the paper's EM sovereign
+# bond crises (FRED-MD doesn't have the original data). On US data the
+# variance ratios are similar across shocks, so separation is modest: the
+# weak-ID flag is not triggered under the label-invariant criterion, but
+# only by a small margin. This is itself the result worth pinning.
+
+targets:
+  - description: "Number of variables (US macro/financial system)"
+    location: "Replication design: ip_growth, yield, stock_ret (the paper's N = 3 system is Argentine, Brazilian and Mexican EMBI+ yields, §V, pp. 784-86)"
+    paper_value: 3.0
+    paper_units: "count"
+    our_key: "n_vars"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of recession-regime months (9 NBER recessions over 1959-2024 sample)"
+    location: "config.yaml: 9 recessions including COVID; current FRED-MD extent gives ~104 recession months"
+    paper_value: 104.0
+    paper_units: "count"
+    our_key: "n_recession_months"
+    tolerance: 15.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of expansion-regime months (sample minus recessions)"
+    location: "Total monthly obs minus recession months"
+    paper_value: 681.0
+    paper_units: "count"
+    our_key: "n_expansion_months"
+    tolerance: 30.0
+    tolerance_kind: "absolute"
+
+  - description: "Max |eigenvalue| of companion matrix (stable, near unit root)"
+    location: "Stability diagnostic (replication-derived pin: 0.9935; band kept below 1 so the target actually enforces stability)"
+    paper_value: 0.99
+    paper_units: "modulus"
+    our_key: "max_eig_modulus"
+    tolerance: 0.0099
+    tolerance_kind: "absolute"
+
+  - description: "Weak-ID flag NOT triggered under the label-invariant criterion (min pairwise log separation 0.17 > 0.1 heuristic; separation is modest, not comfortable)"
+    location: "Framework diagnostic (README §'Identification strength' describes the criterion): log-scale pairwise separation, invariant to regime relabelling; the 0.17 separation is from an earlier run of this replication"
+    paper_value: 0.0
+    paper_units: "indicator (1.0 = weak ID flagged)"
+    our_key: "weak_identification_flagged"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Eigenvalue spread (max/min variance ratio across shocks)"
+    location: "Regression baseline from an earlier run of this replication (1.56), not a paper number; README §'Identification strength' describes the diagnostic"
+    paper_value: 1.56
+    paper_units: "ratio"
+    our_key: "eig_spread"
+    tolerance: 0.30
+    tolerance_kind: "absolute"

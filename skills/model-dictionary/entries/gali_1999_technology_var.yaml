@@ -1,0 +1,185 @@
+id: "gali_1999_technology_var"
+citation:
+  authors: "Galí"
+  year: 1999
+  title: "Technology, Employment, and the Business Cycle: Do Technology Shocks Explain Aggregate Fluctuations?"
+  journal: "American Economic Review"
+  volume: "89"
+  issue: "1"
+  pages: "249-271"
+
+research_questions:
+  - "do technology shocks explain aggregate fluctuations (RBC hypothesis)?"
+  - "how do hours/employment respond to a technology shock?"
+  - "identifying technology shocks via long-run restrictions"
+  - "conditional comovement of productivity and labour input"
+  - "sources of the business-cycle comovement of output and hours"
+tags:
+  - technology_shocks
+  - long_run_restrictions
+  - structural_var
+  - hours_productivity
+  - rbc_critique
+  - business_cycle
+  - us_macro
+  - g7
+  - canonical
+  - identification
+
+model:
+  class: "structural_var"
+  prior: null                          # classical SVAR
+  variables:
+    endogenous:
+      # Baseline bivariate system (p. 258), both in first differences of logs:
+      - {name: "labour productivity growth", proxy: "constructed: dlog real GDP - dlog hours (paper: x = log GDP - log hours; series from Citibase)", transform: "dlog", role: "productivity (carries the identifying unit root)"}
+      - {name: "hours growth", proxy: "paper: log total employee-hours in NONAGRICULTURAL ESTABLISHMENTS; closest FRED-QD aggregate is HOANBS (nonfarm business hours, a narrower sector concept; documented deviation)", transform: "dlog", role: "labour input"}
+    exogenous: []
+    note: >
+      Productivity is CONSTRUCTED as log GDP minus log hours (p. 258), not
+      taken from a BLS output-per-hour series. No per-capita transformation
+      is used anywhere in the paper. An employment variant replaces hours
+      with the log employed civilian labour force (household survey),
+      rebuilding productivity analogously (p. 258).
+  lags: >
+    NOT STATED in the published article; the lag order lives in the
+    unpublished appendix / NBER WP 5721. The replication uses 4 quarterly
+    lags, the convention of the subsequent replication literature, and
+    treats lag choice as a sensitivity axis.
+  frequency: "quarterly"
+
+identification:
+  method: "long_run"
+  framework: "Blanchard-Quah (1989) machinery; Galí's restriction is on productivity"
+  rationale: >
+    "My approach involves the use of a structural VAR model, identified by
+    the restriction that only technology shocks may have a permanent
+    effect on the level of productivity" (p. 255). Operationally:
+    C^12(1) = 0, that is, "the matrix of long-run multipliers C(1) is assumed to
+    be lower triangular" (p. 257), with productivity ordered first and
+    shocks (technology, nontechnology) orthonormal. The restriction is
+    derived from CRS production with unit-root technology and stationary
+    capital-effective-labour ratio and effort (Assumptions 1-3, pp.
+    255-256): any non-technology shock can move productivity only
+    temporarily, through effort and the capital-labour ratio (eq. 22).
+  contrast_with_alternatives: >
+    Unlike Blanchard-Quah applied to output, the restriction "allows both
+    types of shocks to have permanent effects on the levels of hours and
+    output, and thus does not 'mislabel' as technology any other shock
+    that may have such permanent effects"; unlike Shapiro-Watson (1988),
+    technology shocks are NOT restricted to leave hours unaffected in the
+    long run (p. 256). Galí avoids Solow residuals: measured
+    TFP is contaminated by effort and utilisation (p. 256), and TFP growth
+    is approximately white noise (pp. 267-268, fn. 30).
+  stationarity_choices: >
+    Both series enter in first differences in the baseline: ADF tests do
+    not reject I(1) in the levels of either series and reject it in the
+    differences (p. 257, details in fn. 14). The identification "hinges
+    critically on the presence of a unit root in productivity" but "can
+    accommodate both I(0) and I(1) hours"; the robustness variant uses
+    linearly detrended log hours in place of hours growth (p. 257).
+
+estimation:
+  approach: "classical_var_plus_long_run_rotation"
+  conditional_correlations: >
+    The paper's headline statistics are MODEL-BASED conditional
+    correlations of productivity and hours growth, computed from the
+    structural MA coefficients (eq. 24, p. 257) with the infinite sums
+    truncated at a large lag (fn. 16). They are not sample correlations
+    of recovered shock components.
+  inference: >
+    Standard errors by Monte Carlo from the estimated asymptotic
+    distribution of the VAR coefficients and innovation covariance, 500
+    draws; figures show +/- 2 SE bands (fn. 17, p. 258). IRFs are to
+    one-standard-deviation shocks (p. 258).
+
+sample:
+  start: "1948Q1"
+  end: "1994Q4"
+  notes: >
+    US quarterly, 1948:1-1994:4 (p. 258). The five-variable extension
+    starts 1959:1 because of M2 availability (p. 260). G7 samples in
+    fn. 25 (Canada/Japan from 1962, Germany/France from 1970, UK/Italy
+    to 1994:3). FRED-QD starts 1959Q1, so the canonical replication runs
+    1959Q1-1994Q4, a documented truncation.
+
+expected_results:
+  headline:
+    conditional_correlations: "Table 1 Panel A (FD hours), US 48:1-94:4: corr(dx, dn | technology) = -0.82 (SE 0.12), corr | nontechnology = +0.26 (SE 0.12); unconditional corr = -0.26 (SE 0.08). Employment variant: -0.84 / +0.64. Detrended-hours variant (Panel B): -0.81 / +0.35."
+    hours_response: "hours show a persistent, significant DECLINE in response to a positive technology shock (abstract; pp. 258-259); Figure 2 (p. 261): impact ~ -0.35 to -0.5%, trough within ~2 quarters, partial recovery by h=12 (figure-read)"
+    productivity_response: "immediate increase of about 0.6 percent to a 1-SD technology shock, 'eventually stabilizing at a level somewhat higher' (p. 258)"
+    output_response: "permanent increase, initial rise more gradual than productivity's (pp. 258-259)"
+  business_cycle_decomposition: >
+    No variance-decomposition table. Section IV historical decomposition
+    (bivariate FD model, components HP-filtered ex post, lambda = 1600):
+    the TECHNOLOGY components of GDP and hours have correlation -0.02:
+    "the strong positive comovement ... generally viewed as central
+    characteristic of business cycles is conspicuously absent";
+    NONTECHNOLOGY components correlate +0.97 and "account for the bulk of
+    the decline in GDP and hours associated with postwar recessions"
+    (pp. 265-267, Figure 6).
+  five_variable_extension: >
+    [dx, dn, d(m-p), r-dp, d2p] with m = log M2, p = log CPI, r = 3-month
+    T-bill; 1959:1-1994:4; ONE identifying restriction (only technology
+    moves productivity permanently), the four nontechnology shocks left
+    unidentified individually (p. 260). Conditional correlations survive
+    (Table 2: hours -0.75 tech / +0.22 nontech). The initial hours
+    decline is "more than fully reversed over time" in this system,
+    though not under the employment measure (p. 261, fn. 23). Inflation
+    falls persistently, which is read as supporting sluggish price adjustment and
+    "the 'new Keynesian' interpretation" (p. 262).
+  g7_evidence: >
+    Bivariate productivity-EMPLOYMENT VARs (OECD data): technology-
+    conditional correlations negative in 5 of 6 countries (Canada -0.59,
+    UK -0.91, Germany -0.55, France -0.81, Italy -0.93; Japan +0.41
+    insignificant); average -0.56 (-0.75 ex-Japan); nontechnology average
+    +0.26 (Table 3, p. 265). France uses detrended employment (its
+    employment rejects a unit root, p. 263).
+
+recommend_when:
+  - "user asks whether technology shocks drive business cycles (RBC assessment)"
+  - "user wants to identify technology shocks without using Solow residuals"
+  - "long-run restrictions are acceptable and a productivity unit root is plausible"
+  - "hours-productivity comovement (conditional on shock type) is the object of interest"
+  - "data are quarterly aggregates available as productivity and labour input"
+not_recommended_when:
+  - "productivity is plausibly stationary (the identification hinges on its unit root, p. 257)"
+  - "user rejects long-run restrictions (small-sample distortions; see the entry's caveats)"
+  - "interest is in identifying the individual non-technology shocks (the paper leaves them unidentified on purpose)"
+  - "only annual or short samples are available (long-run restrictions are data-hungry)"
+caveats:
+  - "the hours response is the centre of a famous later controversy (specification of hours: levels vs differences vs per-capita); this entry records only what the 1999 paper runs: FD hours baseline, linearly detrended hours robustness, employment variant"
+  - "long-run identification estimates C(1) imprecisely in finite samples (Faust-Leeper critique applies to the method class)"
+alternative_approaches:
+  - {id: "blanchard_quah_1989", reason: "the long-run identification machinery this paper adapts; demand/supply application to output-unemployment"}
+  - {id: "uhlig_2005_sign_restrictions", reason: "agnostic sign-restriction alternative for shock identification"}
+  - {id: "lanne_meitz_saikkonen_2017_nongaussian_svar", reason: "statistical identification when long-run restrictions are contested"}
+
+implementation_notes:
+  replication: "scripts/replications/gali_1999_technology_var/"
+  fred_mapping: >
+    Hours: HOANBS (nonfarm business sector hours). The paper uses total
+    employee-hours in NONAGRICULTURAL ESTABLISHMENTS (p. 258), a broader
+    concept including government; no exact FRED-QD counterpart exists.
+    Productivity: constructed as dlog(GDPC1) - dlog(HOANBS), mirroring
+    the paper's construction x = log GDP - log hours (with the sector
+    mismatch inherited in the denominator). Employment variant: CE16OV.
+    Five-variable extension: M2SL, CPIAUCSL, TB3MS.
+  lag_order_caveat: >
+    Source of the 4-lag convention, Francis-Ramey (2005, JME): "We
+    include four quarterly lags of each variable in the estimation; the
+    results are similar if we use eight lags instead."
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-11"
+  against: "AER 89(1) published PDF, field-by-field"
+  pdf_location: "papers/gali_1999_technology_var.pdf"
+  notes: >
+    Every quantitative claim above carries its journal page reference; Table
+    1/2/3 values cross-checked against the surrounding prose. Known
+    gaps inherited from the PUBLISHED text itself: the VAR lag order, ADF
+    test details, and exact Citibase codes are deferred by the paper to the
+    unpublished appendix / NBER WP 5721 and are recorded here as caveats,
+    not facts.
+

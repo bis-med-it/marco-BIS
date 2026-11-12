@@ -1,0 +1,93 @@
+id: "sims_1980_var"
+citation:
+  authors: "Sims"
+  year: 1980
+  title: "Macroeconomics and Reality"
+  journal: "Econometrica"
+  volume: "48"
+  pages: "1-48"
+
+research_questions:
+  - "effect of monetary policy on output"
+  - "monetary policy transmission"
+  - "macroeconomic dynamics"
+  - "atheoretical time series analysis"
+tags:
+  - monetary_policy
+  - var
+  - cholesky
+  - us_macro
+  - foundational
+
+model:
+  class: "var"
+  prior: null
+  variables:
+    # Paper variables (p. 18): money (M), real GNP (Y), unemployment (U),
+    # wages (W), price level (P), import prices (PM); all logged except
+    # unemployment. Exact definitions are in the paper's data appendix;
+    # FRED proxies below.
+    endogenous:
+      - {name: "M1", proxy: "nominal M1; replication reconstructs M1 = M1REAL × CPI (the index FRED deflates M1SL by)", transform: "log", role: "money supply"}
+      - {name: "real GNP", proxy: "GNPC96 / GDPC1 (FRED)", transform: "log", role: "output"}
+      - {name: "unemployment", proxy: "UNRATE (FRED)", transform: "level", role: "labour market"}
+      - {name: "wages", proxy: "nominal wage rate; replication uses CES0600000008 (FRED)", transform: "log", role: "nominal wages"}
+      - {name: "GNP deflator", proxy: "implicit price deflator; replication uses GDPCTPI (FRED)", transform: "log", role: "price level"}
+      - {name: "import prices", proxy: "import-price index; replication substitutes WPSID61 (a PPI, a rough FRED stand-in)", transform: "log", role: "external prices"}
+    exogenous: []
+  deterministic: "constant + linear time trend (paper p. 18: 'the regressions all included time trends'); US has NO seasonal dummies (Germany only)"
+  lags: 4
+  frequency: "quarterly"
+
+identification:
+  method: "cholesky"
+  ordering: ["M1", "real GNP", "unemployment", "wages", "GNP deflator", "import prices"]
+  rationale: >
+    Triangular (Cholesky) orthogonalization with variables ordered
+    M, Y, U, W, P, PM as in the paper (p. 21). Money is ordered first so the
+    money innovation is the headline shock.
+
+sample:
+  start: "1949Q1"
+  end: "1975Q4"
+  notes: >
+    Paper US fit period is 1949-75 (p. 18). FRED-QD starts 1959Q1, so the
+    canonical replication is truncated to 1959Q1-1975Q4 (68 obs); pre-1959
+    data is unreachable from FRED-QD.
+
+expected_results:
+  m1_innovation:    # positive money (M1) shock, M1 ordered first
+    output: "rises temporarily (hump-shaped), peaking within roughly 4-8 quarters"
+    prices: "price level rises persistently"
+    unemployment: "typically declines as output rises"
+  notes: >
+    The headline is descriptive: a money (M1) innovation, with M1 ordered
+    first in the recursive system, raises output temporarily and the price
+    level persistently. Sims (1980) is the foundational unrestricted VAR;
+    the later price-puzzle discussion (for interest-rate shocks) and the
+    commodity-price remedy belong to Sims (1992) and CEE (1999); see the
+    alternative_approaches below.
+
+recommend_when:
+  - "replication exercise or pedagogical demonstration"
+  - "user wants the foundational VAR specification"
+  - "starting point before adding Bayesian priors"
+not_recommended_when:
+  - "sample includes post-2000 data where M1 behaviour changed"
+  - "open economy context"
+alternative_approaches:
+  - {id: "cee_1999_monetary_svar", reason: "includes commodity-price information; report whether and how this changes the price response"}
+  - {id: "litterman_1986_bvar", reason: "adds Bayesian shrinkage for better forecasting"}
+
+implementation_notes:
+  replication: "scripts/replications/sims_1980_var/"
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-03"
+  against: "original paper (Sims 1980, Econometrica 48(1), 1-48)"
+  pdf_location: "papers/sims_1980_var.pdf"
+  notes: >
+    Sims fitted lag lengths of four and eight and tested the shorter
+    specification (p. 18); quarterly frequency is confirmed by the IRF
+    figure axes (pp. 35-41).

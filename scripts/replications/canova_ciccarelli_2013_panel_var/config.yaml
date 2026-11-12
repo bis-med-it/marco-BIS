@@ -1,0 +1,81 @@
+# Canova-Ciccarelli (2013) "Panel Vector Autoregressive Models: A Survey"
+# G4 country panel replication.
+#
+# The survey is a methodological taxonomy, not a single empirical paper.
+# This replication demonstrates its methods on a G4 country panel:
+# UK, US, JP, DE × {IPI, CPI, LTR, STR}, monthly, 1980-2019 (40 years,
+# pre-COVID), built from FRED.
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/canova_ciccarelli_2013_panel_var.yaml
+
+replication:
+  id: "canova_ciccarelli_2013_panel_var"
+  title: "Canova-Ciccarelli (2013) Panel VAR Survey: G4 Country Panel"
+  subtitle: "Pooled VAR + Mean-Group estimators on UK/US/JP/DE 1980-2019"
+
+data:
+  source: "csv_file"
+  staging_path: "data/staging/canova_ciccarelli_g4_panel.csv"   # long-format panel
+  sample_start: "1980-01-01"
+  sample_end: "2019-12-31"
+
+  # 4 variables per country
+  variables:
+    - {name: "ipi",  role: "log industrial production index"}
+    - {name: "cpi",  role: "log consumer price index"}
+    - {name: "ltr",  role: "long-term interest rate (10Y, level)"}
+    - {name: "str",  role: "short-term interest rate (3M or central bank policy, level)"}
+
+  countries: ["US", "UK", "JP", "DE"]
+
+  fred_series_map:
+    US: {ipi: "INDPRO",          cpi: "CPIAUCSL",        ltr: "GS10",            str: "TB3MS"}
+    UK: {ipi: "GBRPROINDMISMEI", cpi: "GBRCPIALLMINMEI", ltr: "IRLTLT01GBM156N", str: "IR3TIB01GBM156N"}
+    JP: {ipi: "JPNPROINDMISMEI", cpi: "JPNCPIALLMINMEI", ltr: "IRLTLT01JPM156N", str: "IRSTCB01JPM156N"}
+    DE: {ipi: "DEUPROINDMISMEI", cpi: "DEUCPIALLMINMEI", ltr: "IRLTLT01DEM156N", str: "IR3TIB01DEM156N"}
+
+  transforms:
+    ipi: "log"
+    cpi: "log"
+    ltr: "level"
+    str: "level"
+
+model:
+  class: "panel_var"
+  estimators: ["pooled", "mean_group", "global_var"]
+  lags: 4
+  trend: "c"                  # unit-specific intercepts (no trend; series are persistent)
+
+  # Global VAR (cross-unit interdependence) hyperparameters. Stacked
+  # system is N = 4 countries × 4 vars = 16 variables; with 4 lags that
+  # is 64 lag coefficients per equation plus an intercept. The tight
+  # cross-unit prior regularises the cross-country blocks.
+  global_var:
+    lambda_1: 0.1              # overall tightness on own-lag, own-var
+    lambda_2: 0.5              # own-unit cross-variable
+    lambda_cross_unit: 0.05    # prior SD of every cross-country coefficient x 0.05 (20 times tighter than the matching within-country coefficient)
+    lambda_3: 1.0              # standard Minnesota lag decay
+    lambda_4: 100.0            # loose intercept
+
+identification:
+  method: "cholesky"
+  # Cholesky ordering within each unit:
+  ordering: ["ipi", "cpi", "ltr", "str"]
+  # The shock of interest: a domestic monetary tightening
+  # (last-ordered str shock, ordered after the macro block).
+  shock_of_interest: "str"
+
+irf:
+  horizon: 24                  # months
+  # Point estimates only: the pooled fit's VARFit face carries one
+  # canonical unit's residuals, so single-VAR bootstrap bands would
+  # misstate the pooled sampling uncertainty (lib rejects them).
+  bands: "none"
+  n_draws: 0
+
+report:
+  horizons_to_report: [0, 6, 12, 24]
+
+general:
+  random_seed: 42

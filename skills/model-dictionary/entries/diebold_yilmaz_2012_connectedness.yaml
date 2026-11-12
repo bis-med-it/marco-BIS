@@ -1,0 +1,157 @@
+id: "diebold_yilmaz_2012_connectedness"
+citation:
+  authors: "Diebold, Yilmaz"
+  year: 2012
+  title: "Better to Give than to Receive: Predictive Directional Measurement of Volatility Spillovers"
+  journal: "International Journal of Forecasting"
+  volume: "28"
+  issue: "1"
+  pages: "57-66"
+
+research_questions:
+  - "measuring volatility spillovers across financial markets"
+  - "directional connectedness (who transmits to whom)"
+  - "time-varying market interconnection across crises"
+  - "network structure of asset-class linkages"
+  - "VAR-based connectedness as an alternative to copulas / GARCH spillovers"
+tags:
+  - connectedness
+  - spillovers
+  - networks
+  - volatility
+  - generalised_variance_decomposition
+  - pesaran_shin
+  - financial_markets
+  - rolling_window
+  - canonical
+  - forecasting
+
+model:
+  class: "var"
+  prior: null                        # baseline classical VAR; Bayesian / shrinkage variants common in extensions
+  variables:
+    endogenous:
+      # Headline application: daily volatilities of four major US asset classes
+      - {name: "US stock market volatility", proxy: "range-based volatility of S&P 500", transform: "log", role: "equity volatility"}
+      - {name: "US bond market volatility", proxy: "range-based volatility of the 10-year Treasury bond YIELD (p. 59)", transform: "log", role: "fixed-income volatility"}
+      - {name: "USD FX volatility", proxy: "range-based volatility of NYBOT (now ICE) US dollar index FUTURES (underlying: USDX/DXY) (p. 59)", transform: "log", role: "currency volatility"}
+      - {name: "commodity volatility", proxy: "range-based volatility of Dow Jones-UBS Commodity Index", transform: "log", role: "commodities volatility"}
+    exogenous: []
+    volatility_measure: >
+      PARKINSON (1980) high-low range estimator (p. 59); it needs daily
+      HIGH and LOW only:
+        daily variance: sigma2_t = 0.361 * (ln(P_max,t) - ln(P_min,t))^2
+        annualised %-sd: sigma_t = 100 * sqrt(365 * sigma2_t)
+      (0.361 = 1/(4 ln 2), Parkinson's constant.) The VAR runs on log
+      volatilities, inferred from Table 1 ("Log volatility summary
+      statistics", p. 60); the paper never states the transform
+      explicitly.
+  lags: 4                            # "vector autoregressions of order 4" (fn. 6, p. 60); index insensitive to orders 2-6
+  frequency: "daily"
+
+estimation:
+  approach: "classical_var_ols"
+  fevd_horizon: 10                   # "10-day-ahead volatility forecast errors" (fn. 6, p. 60); insensitive to 4-10 days
+  rolling_window: 200                # "200-day rolling samples" (p. 61)
+  full_sample_use: "in addition to rolling, a full-sample VAR is reported for static connectedness measures (Table 2, p. 61)"
+  robustness: "fn. 6 + appendix Figs. A.1-A.2 (p. 66): rolling index insensitive to VAR order 2-6 and horizon 4-10 days"
+
+identification:
+  method: "generalised_variance_decomposition"
+  framework: "Pesaran-Shin (1998), Koop-Pesaran-Potter (1996)"
+  rationale: >
+    The Cholesky decomposition makes the FEVD depend on the ordering of
+    variables. For connectedness measurement across symmetric asset
+    classes there is no natural ordering. The generalised (Pesaran-Shin)
+    decomposition computes the FEVD using own-shocks scaled by the
+    correlation structure, producing variance shares that do NOT sum to 1
+    across rows. The decomposition is then row-normalised before computing
+    spillover indices.
+  row_normalisation: >
+    For variable i: gvd_ij^normalised = gvd_ij / sum_k(gvd_ik)
+    so each row sums to 100%. This is the standard DY 2012 convention.
+
+connectedness_measures:
+  total_spillover_index: >
+    S = 100 * (sum of off-diagonal elements of normalised GVD) / N
+    where N is the number of variables. A scalar in [0, 100] giving the
+    fraction of forecast error variance attributable to cross-variable
+    shocks. The headline time-series of the paper.
+  directional_to: "S_{*<-i}: spillovers FROM variable i TO all others (column sum of normalised GVD, excluding diagonal)"
+  directional_from: "S_{i<-*}: spillovers TO variable i FROM all others (row sum, excluding diagonal)"
+  net: "S_{*<-i} - S_{i<-*}: net transmission of variable i (positive = net transmitter, negative = net receiver)"
+  pairwise: "paper eq. (7): net spillover transmitted from market i to market j = (theta~_ji - theta~_ij) / N * 100"
+  conventions_note: >
+    The paper's equations (4), (5) and (7) divide by N and multiply by
+    100 (so the four directional FROM values sum to the total index);
+    Table 2 instead reports plain off-diagonal row/column sums in
+    rows-sum-to-100 units. Both conventions are in the paper; state
+    which one any reported number uses. fn. 7 (p. 61): the
+    "input-output" decomposition of the total index is approximate
+    under the generalised FEVD (exact under Cholesky).
+
+sample:
+  start: "1999-01-25"
+  end: "2010-01-29"                 # ~2771 daily observations
+  notes: >
+    Daily US high and low prices for the four asset-class proxies. Sample
+    explicitly spans the dot-com bust, the housing boom, and the
+    2007-09 financial crisis, central to the paper's narrative about
+    crisis-period spillovers.
+
+expected_results:
+  total_spillover_index:
+    full_sample: "12.6%: \"on average, across our entire sample, 12.6% of the volatility forecast error variance in all four markets comes from spillovers\" (Table 2, p. 61)"
+    pre_2007: "starts slightly below 15%, mostly fluctuates 10-20%, dips to ~10% in Jan 2002 (p. 61); May-Nov 2006 FOMC tightening episode lifts it 12% -> 24% (p. 62)"
+    2007_2008_crisis: "rises sharply; surges ABOVE 30% twice: 2008Q1 (Bear Stearns) and 2008Q4 (post-Lehman) (pp. 62, 64)."
+    post_crisis: "remains elevated relative to the 1999-2006 baseline"
+  net_transmitters:
+    full_sample: "stocks are the largest net transmitter (TO 16.29 - FROM 11.24 = +5.05); bonds -0.56, commodities -1.66, FX -2.83 (Table 2, p. 61)"
+    pre_crisis: "until 2007 all four markets both give AND receive with almost equal magnitudes; net spillovers never exceed ~3% (p. 63)"
+    post_lehman: "the STOCK market is the dominant net transmitter, with net spillovers as high as ~6% post-Lehman, ~5% of it to FX (pp. 63-64; abstract). Bond net-transmission episodes are 2000-01, late 2005-2006 and through 2007; there are NONE post-Lehman (p. 64)."
+    fx_commodities: "full-sample net receivers; commodity net-transmission episodes: 2002, early 2003, late 2004-2005, H2 2009 (p. 64); the 2008 oil spike shows only PAIRWISE commodity->bond/FX spillovers (p. 65)"
+  notes: >
+    Headline contribution: the rolling spillover index acts as a
+    crisis barometer. Spillovers are limited in tranquil times and
+    intensify dramatically during stress. The directional decomposition
+    reveals which markets are sources vs sinks of contagion, a
+    feature unavailable in symmetric measures like correlations.
+
+recommend_when:
+  - "user wants to measure cross-market spillovers / contagion / connectedness"
+  - "research question involves the network structure of financial linkages"
+  - "user has OHLC or volatility data for multiple assets/markets/countries"
+  - "comparison across crises / regimes is desired (rolling window)"
+  - "ordering-invariant FEVD is required (mixed asset classes, no clear recursive ordering)"
+not_recommended_when:
+  - "user wants structural shock identification (GVD is not structural)"
+  - "small number of variables (2-3), where connectedness measures are less informative"
+  - "very low correlations across variables (GVD adds little over Cholesky here)"
+  - "research question is about macroeconomic transmission rather than financial spillovers (consider proxy-SVAR or FAVAR)"
+  - "user wants spillovers in returns / levels rather than volatility (DY framework works there too, but the empirical interpretation differs)"
+alternative_approaches:
+  - {id: "bbe_2005_favar", reason: "for cross-variable transmission in a macro setting via factors instead of network spillovers"}
+  - {id: "primiceri_2005_tvpvar", reason: "TVP-VAR for time-varying transmission within a structural framework"}
+  - {id: "bgr_2010_large_bvar", reason: "if dimension is high, large-BVAR shrinkage can be combined with GVD for connectedness"}
+
+implementation_notes:
+  replication: "scripts/replications/diebold_yilmaz_2012_connectedness/"
+  data_requirements: >
+    Needs daily HIGH and LOW prices for each market (Parkinson estimator;
+    open/close not required). For replicating the paper exactly:
+      - S&P 500 index, 10-yr Treasury bond YIELD, NYBOT/ICE US dollar
+        index futures, DJ-UBS Commodity Index (p. 59).
+    Daily high/low data is not in FRED-MD. Sources: Yahoo Finance,
+    stooq, Bloomberg, the authors' replication archive on
+    financialconnectedness.org, or the R Spillover package's dy2012
+    dataset.
+  computational_notes: >
+    Rolling estimation is the expensive part: T = 2771 with a 200-day
+    window means about 2571 VAR(4) fits. lib.rolling_connectedness runs
+    the loop.
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-10"
+  against: "IJF 28 (2012) 57-66 published PDF (Elsevier), field-by-field"
+  pdf_location: "papers/diebold_yilmaz_2012_connectedness.pdf"

@@ -1,0 +1,96 @@
+# Replication config for the Gertler-Karadi (2015) proxy-SVAR methodology.
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/gertler_karadi_2015_proxy_svar.yaml
+#
+# Variable substitutions vs the original GK 2015 paper:
+#   - Policy indicator GS1: SAME
+#   - log industrial production: SAME (INDPRO)
+#   - log CPI: SAME (CPIAUCSL)
+#   - Excess bond premium: SUBSTITUTED with BAA-AAA spread (BAA - AAA),
+#     conceptually similar but coarser. EBP from Gilchrist-Zakrajšek 2012
+#     is not in FRED-MD; using BAA-AAA is the closest FRED-MD substitute.
+#   - Instrument ff4: SUBSTITUTED with Jarocinski-Karadi 2020 MP_median,
+#     a comparable HF FOMC-window surprise series (sample starts later
+#     but is well-documented and updated).
+
+replication:
+  id: "gertler_karadi_2015_proxy_svar"
+  title: "Gertler-Karadi (2015) Proxy-SVAR (FRED-MD substitutes)"
+  subtitle: "External-instrument identification of monetary shocks; GS1 as policy variable, JK MP_median as instrument"
+
+# --- Data ---
+data:
+  source: "fred_md"
+  # Load bound: the estimation sample is capped by the JK instrument
+  # (ends 2024-01), and recent FRED-MD vintages have a ragged edge
+  # (series updated at different speeds) that the loader's internal-gap
+  # guard rightly refuses. Cap the load at the instrument's coverage.
+  sample_end: "2024-01"
+  series:
+    - {name: "gs1",    fred_code: "GS1"}
+    - {name: "logip",  fred_code: "INDPRO"}
+    - {name: "logcpi", fred_code: "CPIAUCSL"}
+    # BAA-AAA spread loaded as two components, differenced inline (no
+    # general "subtract" operation in lib.transform; it's a per-column
+    # univariate map; cross-column derivations stay in replicate.py).
+    - {name: "baa",    fred_code: "BAA"}
+    - {name: "aaa",    fred_code: "AAA"}
+
+  transforms:
+    gs1:    "level"
+    logip:  "log"
+    logcpi: "log"
+    spread: "level"   # derived from baa - aaa before transform
+
+  variable_order: ["gs1", "logip", "logcpi", "spread"]
+
+  variable_labels:
+    gs1:    "1-Year Treasury Rate"
+    logip:  "log Industrial Production"
+    logcpi: "log CPI"
+    spread: "BAA-AAA Credit Spread (EBP substitute)"
+
+# --- Instrument --- (fetched via lib.fetch_data with external_archive)
+instrument:
+  source: "jarocinski_karadi_2020"
+  api: "external_archive"
+  dataset_id: "jk_shocks"
+  series_key: "mp_shock"
+  spec:
+    url: "https://raw.githubusercontent.com/marekjarocinski/jkshocks_update_fed_202401/main/shocks_fed_jk_m.csv"
+    column: "MP_median"
+    date_columns: ["year", "month"]
+  description: >
+    Jarocinski-Karadi median-rotation monetary policy shock from HF
+    surprises around FOMC announcements. Substitutes for GK 2015's
+    ff4 instrument (similar in spirit; different cleaning and sample).
+  # Months the JK file leaves missing because the announcement was an
+  # unscheduled/emergency meeting excluded from the surprise measurement
+  # (September 2001; the January and October 2008 crisis actions; March
+  # 2020). These, and ONLY these, are set to zero surprise; any other
+  # missing month aborts the run (an unexplained hole is not a zero).
+  zero_surprise_months: ["2001-09", "2008-01", "2008-10", "2020-03"]
+
+# --- Model ---
+model:
+  class: "var"
+  lags: 12         # monthly, matches GK
+  trend: "c"
+
+# --- Identification ---
+identification:
+  method: "proxy_svar"
+  policy_variable: "gs1"
+  normalization: "unit_policy"   # IRF normalised so GS1 rises by 1.0 on impact
+
+# --- IRF ---
+irf:
+  horizon: 48
+  bands: "wild_bootstrap"
+  n_draws: 1000
+  credible_intervals: [0.68, 0.90]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

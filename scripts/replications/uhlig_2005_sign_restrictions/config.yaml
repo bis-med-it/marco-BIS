@@ -1,0 +1,66 @@
+# Replication config for Uhlig (2005).
+# Mirrors the dictionary entry at:
+#   skills/model-dictionary/entries/uhlig_2005_sign_restrictions.yaml
+
+replication:
+  id: "uhlig_2005_sign_restrictions"
+  title: "Uhlig (2005) Sign-Restricted VAR"
+  subtitle: "Six-variable monthly VAR(12), agnostic identification of the monetary policy shock"
+
+# --- Data ---
+data:
+  source: "fred_md"
+  file: "data/fred_md/dataset.csv"
+  sample_start: "1965-01-01"
+  sample_end: "2003-12-31"
+  # Paper Section 3, p. 392: the 6th variable is TOTAL RESERVES.
+  series:
+    # transforms are 100*log ("log_x_100") so IRFs read in PERCENT, matching the
+    # paper's Fig. 5 / Fig. 6 axes; the funds rate is already in pp (level).
+    # commodity proxy WPSID62 (PPI crude materials), a raw-commodity index.
+    - {name: "indpro",     fred_code: "INDPRO",     transform: "log_x_100"}
+    - {name: "cpi",        fred_code: "CPIAUCSL",   transform: "log_x_100"}
+    - {name: "commodity",  fred_code: "WPSID62",    transform: "log_x_100"}
+    - {name: "ffr",        fred_code: "FEDFUNDS",   transform: "level"}
+    - {name: "nbreserves", fred_code: "NONBORRES",  transform: "log_x_100"}
+    - {name: "tresv",      fred_code: "TOTRESNS",   transform: "log_x_100"}
+  variable_labels:
+    indpro:     "Industrial Production"
+    cpi:        "CPI"
+    commodity:  "Commodity Prices"
+    ffr:        "Federal Funds Rate"
+    nbreserves: "Non-Borrowed Reserves"
+    tresv:      "Total Reserves"
+
+# --- Model ---
+model:
+  class: "var"
+  lags: 12                    # monthly
+  trend: "n"                  # paper p. 392: "I did not include a constant or a time trend"
+
+# --- Identification ---
+identification:
+  method: "sign_restrictions"
+  # Uhlig's monetary contraction: FFR up, prices down, commodity prices down,
+  # nonborrowed reserves down. Output and total reserves LEFT UNRESTRICTED;
+  # leaving output unrestricted is the paper's 'agnostic' contribution.
+  restrictions:
+    monetary_policy:
+      indpro:     0      # unrestricted (agnostic), the key feature
+      cpi:        -1
+      commodity:  -1
+      ffr:        +1
+      nbreserves: -1
+      tresv:      0      # unrestricted (control variable; paper Fig. 2 / Fig. 6)
+  restriction_horizons: 6    # horizons 0..5 inclusive (paper K=5)
+
+# --- IRF ---
+irf:
+  horizon: 48                # 48 months
+  target_accepted: 1000
+  max_rotations: 100000
+  credible_intervals: [0.68, 0.90]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

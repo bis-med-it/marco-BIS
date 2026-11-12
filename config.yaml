@@ -1,0 +1,193 @@
+# Recommended defaults for agent-assisted workflows
+#
+# The executing agent reads this file when it proposes settings for a new
+# analysis, and writes the values it actually uses into that analysis's own
+# config.yaml, which the research log records. Nothing in scripts/lib loads
+# or merges this file: library functions use the arguments they are passed
+# (and their own signature defaults when an argument is omitted), and each
+# replication or application script reads only its own config.yaml.
+# Canonical replications keep their declared settings unless a deviation is
+# approved and logged.
+#
+# Editing a value here therefore changes what the agent proposes next time,
+# not what an existing script computes. Fields marked [lib constant] mirror
+# a value fixed in the library and are informational: changing them here
+# has no effect.
+#
+# Precedence when the agent resolves a setting:
+#   this file < knowledge base < user instruction at runtime (user always wins)
+
+# --- General ---
+general:
+  language: "python"                   # python | r | julia | matlab
+  random_seed: 42                      # integer seed written into each run's config (general.random_seed),
+                                       # which lib.run honours; the seed used is recorded with the results
+  verbose: true                        # print progress updates during estimation
+  max_auto_iterations: 5               # max automatic revisions before asking user
+
+# --- Packages ---
+# Python runs go through the tested reference library: the agent calls
+# scripts/lib and does not substitute another package or write its own
+# estimator for a method the library covers (CLAUDE.md; orchestrator
+# Stage 4). statsmodels is a library dependency and the independent
+# cross-check used inside the test suite; other packages serve only
+# methods the library does not cover. The R block lists defaults for
+# when the user asks for R code, which the agent writes against the
+# library's documented conventions.
+packages:
+  python:
+    estimation: "scripts/lib"           # VAR, BVAR, LP, identification, factor, panel, TVP, MF-VAR, filters
+    data_retrieval: "scripts/lib"       # lib.load_dataset / lib.fetch_data (native REST fetchers)
+    reports: "scripts/lib"              # lib.VARReport (HTML); matplotlib for print figures
+    cross_check: "statsmodels"          # independent reference implementation (also a lib dependency)
+    ml_baselines: "scikit-learn"        # competitor baselines the library does not implement (ridge, LASSO,
+                                        # random forest; benchmarking skill); not a lib dependency
+  r:
+    var_estimation: "vars"
+    bvar_estimation: "bvartools"        # or BVAR, bvarsv
+    local_projections: "lpirfs"
+    charts: "ggplot2"
+    data_retrieval: "fredr"
+
+# --- Data retrieval ---
+data:
+  default_source: "fred"               # fred | ecb | imf | bis | oecd | local (routes in skills/data-retrieval/connections/)
+  fred_api_key_env: "FRED_API_KEY"     # [lib constant] scripts/lib/data/fetchers/fred.py reads FRED_API_KEY
+  frequency_alignment: "mean"          # lib.preprocess.aggregate method: mean (rates, indices) | sum (flows) | end (stocks)
+  missing_data: "flag"                 # flag | interpolate_linear | drop
+  default_transform: "log"             # any lib.transform name, e.g. log | dlog | diff | level
+
+# --- Estimation: BVAR ---
+bvar:
+  prior: "minnesota"                   # the one native family, lib.MinnesotaPrior: symmetric natural-conjugate
+                                       # (BGR 2010) by default; asymmetric=True gives the Litterman / Sims-Zha
+                                       # own/cross form; mu and delta add the Sims-Zha (1998) dummy observations.
+                                       # Sims-Zha's structural-form prior on A0 is not implemented. GLP-inspired
+                                       # empirical-Bayes hyperparameter optimisation and Lenza-Primiceri (2022)
+                                       # scaling are separate lib routines.
+  minnesota:
+    lambda_1: 0.1                      # overall tightness
+    lambda_2: 0.5                      # cross-variable tightness: ACTIVE ONLY with asymmetric=True
+                                       # (a no-op under the default symmetric prior; see lib.MinnesotaPrior)
+    lambda_3: 1                        # lag decay
+    lambda_4: 100                      # constant-term tightness (larger = looser prior on the intercept)
+  sum_of_coefficients_mu: 1            # sum-of-coefficients prior hyperparameter
+  dummy_initial_obs_delta: 1           # dummy initial observation hyperparameter
+  max_lags: 8                          # maximum lag order to evaluate (quarterly)
+  max_lags_monthly: 13                 # maximum lag order (monthly)
+  lag_selection: "bic"                 # aic | bic | hq | manual ("hq" = lib's "hqic"; both spellings accepted)
+  num_draws: 10000                     # posterior draws to propose; when a run omits n_draws the library uses
+                                       # its own defaults (lib.run: 1,000; lib.cholesky_irf: 2,000)
+  burn_in: 2000                        # Gibbs samplers only (MF-VAR, TVP); conjugate Minnesota draws are exact
+  irf_horizon: 40                      # impulse response horizon (quarterly)
+  irf_horizon_monthly: 48             # impulse response horizon (monthly)
+  credible_intervals: [0.68, 0.90]     # credible interval levels
+
+# --- Estimation: local projections ---
+local_projections:
+  horizon: 20                          # quarterly
+  horizon_monthly: 48                  # monthly
+  lags_in_controls: 4                  # lags of endogenous in control set
+  confidence_levels: [0.68, 0.90]
+  hac_method: "newey_west"             # the native LP routines use Newey-West (Bartlett kernel) HAC; no other
+                                       # kernel or estimator is implemented
+  hac_lag_rule: "horizon_plus_one"     # horizon_plus_one | fixed:K (e.g. fixed:4) | auto (Andrews selection is
+                                       # NOT implemented: auto warns and falls back to horizon_plus_one)
+  state_transition_gamma: 1.5          # logistic F(z) parameter (Auerbach-Gorodnichenko 2012) for building the
+                                       # state series; lib.state_dependent_lp_irf takes the state as given
+
+# --- Estimation: sign-restricted VAR ---
+sign_restrictions:
+  algorithm: "qr"                      # qr = Haar accept-reject (lib.sign_restricted_irf) | arias = zero+sign
+                                       # (lib.zero_sign_restricted_irf, ARRW 2018). Uhlig's penalty-function
+                                       # method is not implemented.
+  num_rotations: 10000                 # total rotation draws: a CEILING on attempts, fine for
+                                       # easy identification problems; hard ones (many restricted
+                                       # variables/horizons, unstable samples) can need 100k+ to
+                                       # fill the accepted-draw target (canonical Uhlig uses 100k).
+                                       # If the target is missed at this ceiling, raise it rather
+                                       # than reporting results from a handful of draws.
+  num_accepted_target: 1000            # target accepted draws
+  credible_intervals: [0.68, 0.90]
+
+# --- Estimation: TVP-VAR ---
+# TVP scripts pass these via lib.TVPVARSpec / fit kwargs (see lib.tvp).
+# Keep this block in sync with the lib's semantics when changing either.
+# Hyperparameters here are Primiceri's (2005, p. 831).
+tvp_var:
+  num_draws: 10000                     # Primiceri's production run (lib default 500 is a DEMO scale; expect hours at 10k)
+  burn_in: 2000                        # Primiceri discards the first 2000
+  thinning: 1
+  training_sample: 40                  # observations (10 years quarterly) for the prior; lib takes a count, not a fraction
+  Q_prior_scale: 1.0e-4                # k_Q^2 with k_Q = 0.01 (NOT k_Q itself); lib IW scale = this * tau * V_OLS
+  k_S: 0.1                             # Primiceri's A-drift tightness, for reference only. The lib's S prior is not scaled by the data: do NOT pass k_S^2 as S_prior_scale, keep the lib default 1e-4 (see fit_tvp_var_sv_primiceri Notes)
+  k_W: 0.01                            # Primiceri's volatility-drift tightness (lib uses per-equation IG priors; see Notes)
+  stochastic_volatility: true
+  irf_horizon: 20
+
+# --- Diagnostics ---
+diagnostics:
+  autocorrelation_lags: [4, 8, 12]     # quarterly; pass as lib.diagnostics(lb_lags=...)
+  autocorrelation_lags_monthly: [6, 12, 24]
+  significance_level: 0.05             # [lib constant] lib.diagnostics _PVAL_ALPHA
+  arch_lm_lags: 4                      # pass as lib.diagnostics(arch_lags=...)
+  stability_tolerance: 0.95            # [lib constant] lib.diagnostics _STABILITY_MARGIN: max eigenvalue modulus
+                                       # before a near-unit-root WARNING (explosive = >= 1.0)
+
+# --- Results presentation ---
+# Passed explicitly to lib.VARReport(config=...); the report does not read
+# this file by itself.
+presentation:
+  default_audience: "journal"          # journal | working_paper | policy_brief | presentation | internal
+  chart:
+    figure_size: [10, 8]               # inches [width, height]
+    panel_size: [3.2, 2.4]             # per IRF panel
+    line_color: "#1a1a2e"
+    band_68_color: "#4a6fa5"
+    band_68_alpha: 0.35
+    band_90_color: "#4a6fa5"
+    band_90_alpha: 0.15
+    zero_line_color: "#999999"
+    line_width: 1.5
+    font_family: "serif"               # serif (journal) | sans-serif (presentation)
+    font_size_title: 11
+    font_size_axis: 9
+    font_size_tick: 8
+    dpi: 300
+    format: "pdf"                      # pdf | png | svg
+    colourblind_safe: true
+  table:
+    format: "latex"                    # latex | markdown | xlsx
+    booktabs: true                     # three-line table style
+    significance_stars: true           # for frequentist; false uses CI for Bayesian
+  narrative:
+    language: "en"                     # ISO 639-1 code
+    decimal_separator: "."             # . | ,
+    thousands_separator: ","           # , | . | space | none
+
+# --- Advisor protocol ---
+# These API keys are for calling a second model
+# from within the framework. They are separate from the coding agent's own
+# authentication, which is handled by its login flow.
+advisor:
+  enabled: false                       # the agent makes no advisor calls unless this is true
+  primary:
+    provider: "anthropic"
+    model: "claude-opus-4-8"           # example id; set a current model from your provider
+    endpoint: "https://api.anthropic.com/v1/messages"
+    api_key_env: "ANTHROPIC_API_KEY"
+    max_tokens: 8192
+    temperature: 0
+  fallback: null                       # set to a provider block to enable fallback
+  settings:
+    max_attempts: 2
+    timeout_seconds: 120
+    log_all_exchanges: true
+    require_human_review: true
+
+# --- Research log ---
+research_log:
+  auto_save: true
+  format: "json_and_markdown"          # json | markdown | json_and_markdown
+  include_code_archive: true
+  code_hash_algorithm: "sha256"

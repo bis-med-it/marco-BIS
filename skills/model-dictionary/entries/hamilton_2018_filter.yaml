@@ -1,0 +1,159 @@
+id: "hamilton_2018_filter"
+citation:
+  authors: "Hamilton"
+  year: 2018
+  title: "Why You Should Never Use the Hodrick-Prescott Filter"
+  journal: "Review of Economics and Statistics"
+  volume: "100"
+  issue: "5"
+  pages: "831-843"
+
+research_questions:
+  - "extracting business-cycle component from macro time series without the spurious cycles of the HP filter"
+  - "trend-cycle decomposition with theoretically grounded statistical properties"
+  - "alternative to HP filter for cycle extraction"
+  - "real-time / one-sided cycle estimation"
+  - "what is the 'right' way to detrend macro data?"
+tags:
+  - trend_cycle
+  - business_cycle
+  - filter
+  - detrending
+  - hp_filter_critique
+  - regression_filter
+  - canonical
+  - methodological
+
+model:
+  class: "filter"                    # not a VAR; a univariate filter
+  prior: null
+  variables:
+    endogenous:
+      - {name: "any I(d) series with p >= d; \"can isolate a stationary component from any I(4) series\" at p = 4 (p. 839), including dth-order polynomial trends (Prop. 4, p. 837)", role: "the series to be decomposed into trend + cycle"}
+    typical_applications:
+      - "log real GDP"
+      - "log employment / unemployment rate"
+      - "log industrial production"
+      - "credit-to-GDP ratio (BIS gap)"
+    exogenous: []
+  frequency: "any (quarterly common; method works for monthly, annual)"
+
+methodology:
+  approach: "linear_regression_projection"
+  hamilton_filter_definition: >
+    To decompose y_t into trend and cycle, project y_{t+h} on a
+    constant and the p MOST RECENT values as of date t (eq. 20, p. 837;
+    p = 4 for quarterly data):
+      y_{t+h} = beta_0 + beta_1 y_t + beta_2 y_{t-1}
+             + beta_3 y_{t-2} + beta_4 y_{t-3} + v_{t+h}
+    Then define:
+      trend_{t+h}_estimate = fitted value of regression
+      cycle_{t+h}_estimate = v_{t+h} (residual)
+    h is the main tuning parameter; p is fixed at one year of lags
+    (Sec. IV.C is titled "Specification of p and h"; both are choices,
+    with p >= d and p, h integer multiples of observations per year).
+  regression_free_variant: >
+    The random-walk special case v_{t+h} = y_{t+h} - y_t (eq. 22,
+    p. 837) is parameter-free, has ZERO dependence on future observations
+    for any sample size, and is "a quick robustness check" (p. 838); used in
+    every figure and Table 2. Hamilton recommends it with h = 5 years
+    for debt/financial cycles (Jorda-Schularick-Taylor data, p. 838).
+  recommended_horizons:
+    quarterly: "h = 8 (2 years ahead), Hamilton's headline recommendation"
+    monthly: "h = 24 (2 years ahead), same intuition"
+    annual: "h = 2"
+  rationale: >
+    The HP filter introduces spurious dynamic relations not present in
+    the data-generating process and assigns end-of-sample values that
+    differ systematically from middle-of-sample values. Hamilton shows
+    these issues are intrinsic to the smoothing-parameter formulation
+    and recommends instead a simple two-step regression that:
+      (i) achieves all the standard goals of detrending (cycle has
+          finite variance, no unit root, well-defined cyclical
+          properties);
+      (ii) avoids end-of-sample distortions;
+      (iii) is well-defined for any I(d) process with p >= d
+            (stationary residuals "provided that fourth differences of
+            y_t are stationary" at p = 4, p. 837) and is robust to
+            seasonality (1 - L^8 kills seasonal frequencies; fn 18);
+      (iv) uses only date-t information in the REGRESSORS; NB the OLS
+           coefficients DO "make use of future observations", with
+           influence vanishing asymptotically (fn 16, p. 837). For
+           strict real-time work, fit recursively or use the
+           regression-free variant (zero future dependence for any T).
+
+what_it_replaces:
+  hp_filter:
+    standard_lambda_quarterly: 1600
+    standard_lambda_monthly: 14400   # EViews-style convention, NOT from the paper (which gives only 1600 quarterly and cites Ravn-Uhlig 2002, whose monthly value is 129600); matches lib defaults
+    hamilton_critique:
+      spurious_dynamics: "HP-filtered series exhibit correlations and oscillations not present in the underlying DGP"
+      end_of_sample: "values near sample endpoints behave systematically differently from middle"
+      smoothing_parameter: "no theoretical basis for canonical lambda choices; data-driven values are vastly different"
+  bandpass_filters: "(Baxter-King, Christiano-Fitzgerald): a similar critique applies, though method-specific"
+  one_sided_hp: "computed in the paper via a single Kalman-filter pass (fn 9, p. 834); it avoids two-sided lookahead, but changes in its trend AND implied cycle remain 'readily forecastable from their own lagged values' (p. 835), i.e. the spurious dynamics remain"
+
+what_hamilton_filter_does_NOT_solve:
+  - "Some critics (Schüler 2018, others) argue Hamilton's filter STILL has filter-induced dynamics, just different ones from HP"
+  - "Hamilton trend LAGS the data by h periods by construction, which gives it peculiar timing"
+  - "Choice of h is itself a tuning parameter (though discrete and economically motivated, unlike continuous lambda)"
+  - "Does not separate noise from cycle within the residual"
+
+expected_results:
+  vs_hp_filter:
+    cycle_amplitude: >
+      Hamilton cycle amplitude differs from HP cycle; magnitudes are not
+      directly comparable, and no general amplitude ranking holds across
+      processes and filter settings. The paper itself makes NO amplitude
+      comparison (its Table 1 point is that the MLE lambda for GDP is
+      0.245, not 1600).
+    cycle_timing: >
+      both cycles are dated at the observation date (c_{t+h} = y_{t+h} -
+      g-hat; fn 12), so there is NO h-period lead; the trend ESTIMATE is based
+      on information h periods stale. The paper's timing observation:
+      employment's cycle starts declining before NBER peaks, 'a true feature
+      of the data' (p. 838).
+    end_of_sample: "Hamilton avoids HP's end-of-sample distortion"
+  paper_anchors:
+    gdp_cycle_sd: "3.38 (regression residuals) / 3.69 (random-walk variant), 1947:1-2016:1, Table 2 p. 840; regression loses the first p+h-1 = 11 observations, the random-walk variant the first h = 8"
+    correlations_with_gdp_cycle: "unemployment -0.81, employment +0.85 (Table 2)"
+    employment_application: "100 x log of end-of-quarter total nonfarm payrolls, SA vs NSA nearly identical (Fig. 5, p. 838-839)"
+  in_practice:
+    business_cycle_dating: "Hamilton-filtered cycle generally agrees with NBER dating but with shifted peaks/troughs vs HP"
+    credit_gap: "for debt/financial cycles Hamilton's own guidance is h = 5 YEARS with the regression-free variant (p. 838); the claim that this yields different gap magnitudes than the canonical HP-based BIS gap is Drehmann-Yetman (2018), not this paper"
+
+recommend_when:
+  - "user needs to detrend macro data and wants to avoid HP-filter critiques"
+  - "real-time / one-sided decomposition is required"
+  - "series may be I(2) (e.g., levels with persistent trend) where HP behaviour is particularly poor"
+  - "user wants a transparent, simple approach with discrete tuning choices (h and p)"
+  - "financial-cycle or credit-gap work where HP end-point behaviour is a concern"
+not_recommended_when:
+  - "user needs a continuously smooth trend (Hamilton residuals are jagged)"
+  - "user is committed to HP for consistency with prior literature"
+  - "a trend estimate built on information h periods old is unsuitable"
+  - "user prefers the Beveridge-Nelson / unobserved-components / Kalman-filter family for structural reasons (see Kamber-Morley-Wong 2018; Morley, Nelson & Zivot 2003)"
+alternative_approaches:
+  - {method: "Baxter-King (1999) bandpass filter", reason: "bandpass filter with a different trade-off, but a similar Hamilton critique applies", notes: "no dictionary entry; implemented in scripts/lib/filters.py (bk_filter)"}
+  - {id: "kamber_morley_wong_2018_bnf", reason: "Beveridge-Nelson filter: a model-based alternative to filter-based detrending"}
+  - {id: "stock_watson_2018_lpiv", reason: "if interest is causal effects rather than cycle extraction, sidestep filtering entirely"}
+  - notes: "HP filter remains the de facto standard in much of the literature; Hamilton's critique has not displaced it universally"
+
+implementation_notes:
+  replication: "scripts/replications/hamilton_2018_filter/"
+  practical_choices:
+    h_choice: "Hamilton recommends h = 8 for quarterly, h = 24 for monthly, h = 2 for annual (p. 838 + fn 13); h = 5 years for debt cycles"
+    lag_count: "p = one year of lags: 4 quarterly (the paper states p = 4 'for quarterly data'); the seasonal principle (p and h integer multiples of observations per year, p. 838) implies p = 12 monthly"
+    sample_loss: "you lose p + h - 1 observations at the start (= 11 for quarterly p=4, h=8, per the Table 2 note; the random-walk variant loses h). Monthly with p=12, h=24: 35 months."
+    real_time_use: "fit recursively expanding-window for clean real-time gaps; avoid the side effects of a rolling window"
+  related_papers:
+    - "Schüler (2018, ECB): comment arguing Hamilton's filter shares some of HP's drawbacks"
+    - "Drehmann & Yetman (2018, BIS Working Paper): Hamilton vs HP for the credit gap"
+    - "Quast & Wolters (2022): modified one-sided Hamilton filter for real-time gap"
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-10"
+  against: "REStat 100(5) published PDF, field-by-field (incl. appendix)"
+  pdf_location: "papers/hamilton_2018_filter.pdf"
+

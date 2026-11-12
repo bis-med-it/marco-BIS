@@ -1,0 +1,80 @@
+# Paper-target validation for Schorfheide-Song (2015) MF-VAR replication.
+#
+# SS 2015 (JBES) treats quarterly series as exact 3-month averages of
+# latent monthly LOG LEVELS (eq. 4, p. 369), handling the ragged edge by
+# varying the observation-vector dimension (Durbin-Koopman 2001). This
+# replication uses the equivalent-in-differences formulation (the
+# 5-weight Mariano-Murasawa identity on monthly GROWTH rates), a
+# documented deviation (see README).
+#
+# Headline check: at quarter-ends the Mariano-Murasawa aggregate of the
+# latent monthly state matches observed quarterly GDP growth. The
+# measurement equation enforces this identity in every Gibbs draw, so the
+# posterior mean (a linear average of the draws) also satisfies it, up to
+# floating-point precision (latest run: about 1.5e-6). This is a
+# framework check, not a number from the paper.
+
+targets:
+  - description: "Sample length in months (1960-2019)"
+    location: "config.yaml: 60 years × 12 = 720; ours 719 (paper: t = 1 is 1968:M1, forecast origins 1997:M7 to 2010:M1, p. 371)"
+    paper_value: 719.0
+    paper_units: "count"
+    our_key: "n_months"
+    tolerance: 12.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of quarterly observations (~239 for 60 years)"
+    location: "FRED-QD GDP, post 1960Q1 sample"
+    paper_value: 239.0
+    paper_units: "count"
+    our_key: "n_quarterly_obs"
+    tolerance: 5.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of variables (3 monthly + 1 quarterly = 4)"
+    location: "config.yaml (replication design; paper is 11-var, and its own online-appendix small system is GDP, CPI, UNR, FF, mentioned on p. 376)"
+    paper_value: 4.0
+    paper_units: "count"
+    our_key: "n_vars"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "VAR lag order"
+    location: "config.yaml: 4 monthly lags (replication choice; the paper uses p(m) = 6, p. 372)"
+    paper_value: 4.0
+    paper_units: "count"
+    our_key: "n_lags"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "MF-VAR is stable (max|eig| < 1)"
+    location: "Framework stability check (not reported in the paper)"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "stable"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Gibbs draws stored after burn-in"
+    location: "config.yaml: 500 iter, 100 burn-in, no thinning -> 400 stored (paper: 20000 draws, first 10000 discarded, p. 372)"
+    paper_value: 400.0
+    paper_units: "count"
+    our_key: "n_draws_stored"
+    tolerance: 50.0
+    tolerance_kind: "absolute"
+
+  - description: "MM aggregate of the posterior-mean monthly state matches observed quarterly GDP at quarter-ends (framework check)"
+    location: "Mariano-Murasawa identity in the measurement equation: it holds in every Gibbs draw, so the posterior mean satisfies it to numerical precision; the 0.05 threshold is a loose ceiling"
+    paper_value: 1.0
+    paper_units: "indicator (1.0 = max |MM(state) - observed| at quarter-ends < 0.05)"
+    our_key: "state_matches_observed_at_qends"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Max MM-aggregation mismatch at quarter-ends (numerical-precision check, not a paper number)"
+    location: "Framework check: MM aggregate of the posterior-mean state minus observed quarterly value, max over quarter-ends. The identity holds in every draw, so the posterior mean satisfies it to numerical precision (latest run: about 1.5e-6). The 0.02 value is a loose ceiling, not a baseline from a run"
+    paper_value: 0.02
+    paper_units: "growth-rate units"
+    our_key: "state_qend_max_mismatch"
+    tolerance: 0.05
+    tolerance_kind: "absolute"

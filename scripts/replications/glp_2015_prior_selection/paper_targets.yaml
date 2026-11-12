@@ -1,0 +1,85 @@
+# Paper-target validation for the Giannone-Lenza-Primiceri (2015) replication.
+#
+# IMPORTANT: this replication is a METHOD DEMONSTRATION of GLP's marginal-
+# data-density (MDD) hyperparameter optimisation, applied to the CEE 1999
+# 7-variable monetary BVAR (4 lags, log-levels, 1965-1995, NO Gamma
+# hyperpriors). It does NOT reproduce GLP's own Table 2 (their small/medium/
+# large systems in annualized log levels x 4, 5 lags, 1959-2008, vs the
+# flat-prior VAR / RW). See README "Relationship to GLP's paper" and the
+# dictionary entry for the paper-faithful spec.
+#
+# The targets below are therefore (a) the mechanical property that MDD
+# optimisation raises the MDD over the default prior (GLP argue the ML trades
+# off fit and complexity and equals one-step-ahead forecast performance,
+# p. 439; their evidence is forecast accuracy, Tables 2-3), and (b) our
+# verified CEE-demo run as a regression baseline -- NOT values read from
+# GLP's paper tables.
+#
+# Result in this sample (CEE-style 7-var demo): log MDD change about +14;
+# out-of-sample accuracy is roughly at parity with the default prior
+# (GLP-optimal wins 11 of 28 cells; RMSE ratios 0.82 to 1.20).
+
+targets:
+  - description: "Sample size (quarterly 1965Q1-1995Q4)"
+    location: "config.yaml; CEE 1999 era"
+    paper_value: 124.0
+    paper_units: "count"
+    our_key: "n_obs"
+    tolerance: 4.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of variables (CEE 7-var monetary system)"
+    location: "config.yaml"
+    paper_value: 7.0
+    paper_units: "count"
+    our_key: "n_vars"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "GLP optimisation does not lower log MDD below the default prior (optimiser check)"
+    location: "Optimiser check: the ML-maximising hyperparameters cannot have lower log MDD than the default starting point (GLP Section II, pp. 438-439); GLP report no Bayes-factor comparison"
+    paper_value: 1.0
+    paper_units: "indicator (1.0 = log_MDD_opt > log_MDD_default)"
+    our_key: "glp_improves_mdd"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Log MDD improvement magnitude (replication-derived)"
+    location: "Replication output: +14.0 with the proper-prior (Sigma-dummy-block) MDD and CPI-nominalised M1"
+    paper_value: 14.0
+    paper_units: "log Bayes factor"
+    our_key: "log_mdd_change"
+    tolerance: 5.0
+    tolerance_kind: "absolute"
+
+  - description: "GLP-optimal lambda_1 lands near Litterman's canonical 0.2 on CEE data"
+    location: "Replication output: 0.18"
+    paper_value: 0.18
+    paper_units: "tightness"
+    our_key: "optimal_lambda_1"
+    tolerance: 0.06
+    tolerance_kind: "absolute"
+
+  - description: "OOS comparison cells: 7 vars × 4 horizons"
+    location: "config.yaml: horizons {1, 4, 8, 12}"
+    paper_value: 28.0
+    paper_units: "count"
+    our_key: "n_oos_cells"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Result in this sample: no-look-ahead OOS is near parity (11/28 GLP wins)"
+    location: "README §'Out-of-sample forecast comparison': prior tuned on the initial training window only; defaults already near-optimal"
+    paper_value: 11.0
+    paper_units: "count out of 28"
+    our_key: "n_glp_wins"
+    tolerance: 6.0
+    tolerance_kind: "absolute"
+
+  - description: "OOS differences mostly NOT statistically significant (pin is 6/28 DM-significant cells from an earlier run; rejections cut both ways)"
+    location: "Result in this sample: the GLP gain is small in this exercise"
+    paper_value: 6.0
+    paper_units: "count of cells with p < 0.10"
+    our_key: "n_dm_significant"
+    tolerance: 4.0
+    tolerance_kind: "absolute"

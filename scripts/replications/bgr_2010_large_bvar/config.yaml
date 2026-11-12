@@ -1,0 +1,121 @@
+# Replication config for Banbura-Giannone-Reichlin (2010) Large BVARs.
+#
+# Demonstrates the BGR scaling rule: as system size grows, the overall
+# Minnesota tightness lambda_1 must shrink so the large BVAR's in-sample
+# fit on the benchmark small variables matches the small VAR's fit.
+#
+# Three system sizes: small (3), medium (7), large (17). For each, we
+# fit a BVAR with both the default lambda_1 and a BGR-calibrated value.
+# Headline diagnostic: lambda_1* shrinks monotonically with system size.
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/bgr_2010_large_bvar.yaml
+
+replication:
+  id: "bgr_2010_large_bvar"
+  title: "Banbura-Giannone-Reichlin (2010) Large BVARs"
+  subtitle: "Scaling Minnesota lambda_1 with system size to keep in-sample fit constant"
+
+# --- Data --- monthly FRED-MD, 1959-2019 (pre-COVID)
+data:
+  source: "fred_md"
+  sample_start: "1959-01-01"
+  sample_end: "2019-12-31"
+
+  series:
+    # SMALL system (3 vars): the benchmark whose fit must be matched
+    - {name: "indpro", fred_code: "INDPRO"}
+    - {name: "cpi",    fred_code: "CPIAUCSL"}
+    - {name: "ffr",    fred_code: "FEDFUNDS"}
+    # ADDITIONAL vars for medium (7 vars)
+    - {name: "payems", fred_code: "PAYEMS"}     # employment
+    - {name: "unrate", fred_code: "UNRATE"}     # unemployment rate
+    - {name: "gs1",    fred_code: "GS1"}        # 1-yr T-yield
+    - {name: "gs10",   fred_code: "GS10"}       # 10-yr T-yield
+    # ADDITIONAL vars for large (17 vars)
+    - {name: "m1",     fred_code: "M1SL"}
+    - {name: "m2",     fred_code: "M2SL"}
+    - {name: "houst",  fred_code: "HOUST"}      # housing starts
+    - {name: "ipmans", fred_code: "IPMANSICS"}  # IP, manufacturing
+    - {name: "pcepi",  fred_code: "PCEPI"}      # PCE deflator
+    - {name: "pceca", fred_code: "DPCERA3M086SBEA"} # real PCE
+    - {name: "wage",   fred_code: "CES0600000008"}  # avg hrly earnings
+    - {name: "hours",  fred_code: "AWHMAN"}     # avg weekly hours
+    - {name: "earn_mfg", fred_code: "CES2000000008"} # avg hrly earnings, construction
+    - {name: "businv", fred_code: "BUSINVx"}    # business inventories
+
+  transforms:
+    indpro:   "log"
+    cpi:      "log"
+    ffr:      "level"
+    payems:   "log"
+    unrate:   "level"
+    gs1:      "level"
+    gs10:     "level"
+    m1:       "log"
+    m2:       "log"
+    houst:    "log"
+    ipmans:   "log"
+    pcepi:    "log"
+    pceca:    "log"
+    wage:     "log"
+    hours:    "log"
+    earn_mfg: "log"
+    businv:   "log"
+
+  systems:
+    small:
+      vars: ["indpro", "cpi", "ffr"]
+      label: "Small (3 variables, the benchmark)"
+    medium:
+      vars: ["indpro", "cpi", "ffr", "payems", "unrate", "gs1", "gs10"]
+      label: "Medium (7 variables)"
+    large:
+      vars: ["indpro", "cpi", "ffr", "payems", "unrate", "gs1", "gs10",
+             "m1", "m2", "houst", "ipmans", "pcepi", "pceca", "wage", "hours",
+             "earn_mfg", "businv"]
+      label: "Large (17 variables)"
+
+  benchmark_vars: ["indpro", "cpi", "ffr"]   # vars whose fit must match across systems
+
+# --- Model ---
+model:
+  class: "bvar"
+  lags: 13                                   # monthly, matches BGR
+  trend: "c"
+
+  default_prior:
+    # BGR use the symmetric Normal-inverted-Wishart Minnesota prior (the MDD
+    # calibration below requires it). Under that symmetric form lambda_2 is
+    # INERT (BGR have no asymmetric own-vs-cross weight; see the entry), and
+    # lambda_3=1 yields the 1/k^2 variance decay BGR fix. The scaling rule
+    # tunes only lambda_1.
+    lambda_1: 0.20
+    lambda_2: 0.50         # inert under the symmetric BGR prior
+    lambda_3: 1.00         # 1/k^2 variance decay (BGR's fixed lag decay)
+    lambda_4: 100.0
+    mu: 1.0
+    delta: 1.0
+
+  calibration:
+    # BGR scaling: find lambda_1 such that the large system's average MSE
+    # on the BENCHMARK variables equals the small system's MSE. The fit
+    # ratio target = 1.0 means exact match. The paper allows targets >1
+    # (large allowed to fit slightly worse than small); we use 1.0.
+    target_fit_ratio: 1.0
+    lambda_1_search_bounds: [0.001, 1.000]
+
+# --- Out-of-sample forecast evaluation (BGR's actual headline) ---
+forecast_evaluation:
+  # BGR's headline claim is that the CALIBRATED large BVAR forecasts as
+  # well as the small VAR out-of-sample, while the UNCALIBRATED large BVAR
+  # (default lambda_1) overfits and forecasts worse. We test this with a
+  # rolling-window evaluation.
+  window_size: 240         # 20 years monthly (sample is monthly FRED-MD)
+  horizon: 12              # 1..12 months ahead
+  step: 12                 # re-fit yearly
+  horizons_to_report: [1, 3, 6, 12]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

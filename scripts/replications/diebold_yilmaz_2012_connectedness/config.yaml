@@ -1,0 +1,50 @@
+# Replication config for Diebold-Yilmaz (2012) connectedness.
+# Original paper uses daily Parkinson high-low volatilities on 4 asset classes; FRED-MD
+# is monthly, so we substitute monthly absolute log returns for
+# stocks/FX/oil and absolute yield changes for bonds (GS10) as
+# volatility proxies. The
+# methodology is paper-faithful; the data substitution is documented.
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/diebold_yilmaz_2012_connectedness.yaml
+
+replication:
+  id: "diebold_yilmaz_2012_connectedness"
+  title: "Diebold-Yilmaz (2012) Connectedness: monthly FRED-MD proxies"
+  subtitle: "Generalised FEVD spillover index across 4 asset-class volatility proxies"
+
+# --- Data ---
+data:
+  source: "fred_md"
+  file: "data/fred_md/dataset.csv"
+  sample_start: "1973-01-01"
+  sample_end: "2024-12-31"
+
+  # 4 asset classes via FRED-MD monthly volatility proxies
+  # (DY 2012 originally used daily Parkinson (1980) high-low range volatility)
+  series:
+    - {name: "stocks_vol",     fred_code: "S&P 500",       transform: "abs_log_diff"}
+    - {name: "bonds_vol",      fred_code: "GS10",          transform: "abs_diff"}
+    - {name: "fx_vol",         fred_code: "TWEXAFEGSMTHx", transform: "abs_log_diff"}
+    - {name: "commodity_vol",  fred_code: "OILPRICEx",     transform: "abs_log_diff"}
+  variable_labels:
+    stocks_vol:    "Stock volatility (|d log S&P 500|)"
+    bonds_vol:     "Bond volatility (|d GS10|)"
+    fx_vol:        "FX volatility (|d log TWEXAFEGSMTHx|)"
+    commodity_vol: "Commodity volatility (|d log oil|)"
+
+# --- Model ---
+model:
+  class: "var"
+  lags: 4
+  trend: "c"
+
+# --- Connectedness ---
+connectedness:
+  horizon: 10                 # FEVD horizon (DY use 10 days; we use 10 months)
+  rolling_window: 60          # ~5 years monthly (DY used 200 days)
+  rolling_step: 1
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

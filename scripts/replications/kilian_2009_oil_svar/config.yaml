@@ -1,0 +1,35 @@
+# Replication config for Kilian (2009), AER 99(3).
+# Mirrors skills/model-dictionary/entries/kilian_2009_oil_svar.yaml
+
+replication:
+  id: "kilian_2009_oil_svar"
+  title: "Kilian (2009): Not All Oil Price Shocks Are Alike"
+  subtitle: "Recursive global oil-market SVAR: oil supply, aggregate demand, and oil-specific demand shocks"
+
+data:
+  # Kilian's deposited data.txt (3 cols: oil-production growth, real activity,
+  # real oil price), fetched from the public JCR-Econ (2025) replication repo.
+  source_url: "https://raw.githubusercontent.com/richryan/jcre-oil/main/kilianAER2009replication/data.txt"
+  cache: "data/data.txt"
+  start_period: "1973-02"          # first row of data.txt
+  variables: ["dprod", "rea", "rpo"]
+  variable_labels:
+    dprod: "Oil production growth"
+    rea:   "Real economic activity"
+    rpo:   "Real price of oil"
+
+model:
+  class: "var"
+  lags: 24
+  trend: "c"
+
+identification:
+  method: "cholesky"               # recursive short-run (timing) restrictions
+  ordering: ["dprod", "rea", "rpo"]
+  shock_names: ["oil_supply", "agg_demand", "oil_specific"]
+
+irf:
+  horizon: 15                      # Kilian Fig. 3 shows h = 0..15
+
+general:
+  random_seed: 42

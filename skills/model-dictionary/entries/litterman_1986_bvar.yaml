@@ -1,0 +1,103 @@
+id: "litterman_1986_bvar"
+citation:
+  authors: "Litterman"
+  year: 1986
+  title: "Forecasting with Bayesian Vector Autoregressions—Five Years of Experience"
+  journal: "Journal of Business & Economic Statistics"
+  volume: "4"
+  pages: "25-38"
+
+research_questions:
+  - "macroeconomic forecasting"
+  - "improving VAR forecast accuracy"
+  - "shrinkage estimation for VARs"
+tags:
+  - bvar
+  - minnesota_prior
+  - forecasting
+  - us_macro
+  - foundational
+  - shrinkage
+
+model:
+  class: "bvar"
+  prior: "minnesota"
+  variables:
+    # Litterman 1986 p. 29: seven variables, in the paper's order. The
+    # canonical replication uses FRED-QD proxies (see the replication README).
+    endogenous:
+      - {name: "real GNP", transform: "annual growth rate", role: "output"}
+      - {name: "GNP deflator", transform: "annual inflation rate", role: "price level"}
+      - {name: "unemployment rate", transform: "level", role: "labour market"}
+      - {name: "M1", transform: "log level", role: "money supply"}
+      - {name: "gross private domestic investment", transform: "log level", role: "investment"}
+      - {name: "commercial paper rate (4-6 month)", transform: "level", role: "short-term interest rate"}
+      - {name: "change in business inventories", transform: "level (a flow)", role: "inventory investment"}
+    exogenous: []
+  lags: 6
+  frequency: "quarterly"
+  hyperparameters:
+    lambda_1: 0.2     # overall tightness lambda; {.5, .3, .2, .1} tried, .2 adopted (p. 32, Table 2 discussion)
+    lambda_2: 0.2     # cross-variable weight theta = .2 (p. 31)
+    lambda_3: 1       # harmonic lag decay: own-lag-j std = lambda/j
+    delta_i: "1 (random-walk prior mean on own first lag) for ALL seven variables (paper p. 29)"
+    notes: >
+      Litterman 1986 used NO sum-of-coefficients or dummy-initial-observation
+      priors -- those are not part of the original specification the paper
+      describes (which dates to Litterman's 1979-80 work; sum-of-coefficients
+      arrives with Doan-Litterman-Sims 1984, dummy-initial-observation with
+      Sims 1993).
+
+identification:
+  method: "none"
+  rationale: "paper focuses on forecasting, not structural analysis"
+
+sample:
+  start: "1948Q1"
+  end: "1979Q3"
+  notes: >
+    Paper estimation sample 1948:1-1979:3 (p. 29); pseudo-out-of-sample
+    recursive forecast experiment 1971:1-1975:3 (Table 2) and 1976:1-1979:3 (Table 3), then
+    real-time forecasting in subsequent years (the "five years of
+    experience"). The FRED-QD canonical replication uses 1959Q1-2019Q4
+    (FRED-QD starts 1959; a longer modern sample gives enough rolling OOS
+    origins).
+
+expected_results:
+  forecasting:
+    vs_unrestricted_var: "BVAR substantially outperforms, especially at longer horizons"
+    vs_univariate: "BVAR outperforms AR models for most variables"
+    vs_random_walk: "RMSFE ratios < 1.0 for output and prices"
+  notes: >
+    The main point: unrestricted VARs overfit in moderate-dimensional systems.
+    Bayesian shrinkage towards the random walk prior regularises the estimates
+    and improves out-of-sample performance.
+
+recommend_when:
+  - "user's primary objective is forecasting"
+  - "moderate number of variables (5-10)"
+  - "starting point for BVAR before optimising hyperparameters"
+  - "pedagogical introduction to Bayesian shrinkage"
+not_recommended_when:
+  - "structural identification is the focus"
+  - "very large system (20+); use BGR 2010 scaling approach"
+  - "user needs formal hyperparameter optimisation; use GLP 2015"
+alternative_approaches:
+  - {id: "glp_2015_prior_selection", reason: "formal hyperparameter optimisation via marginal likelihood"}
+  - {id: "bgr_2010_large_bvar", reason: "for systems larger than 10 variables"}
+
+implementation_notes:
+  replication: "scripts/replications/litterman_1986_bvar/"
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-03"
+  against: "original paper (Litterman 1986, JBES 4(1), 25-38)"
+  pdf_location: "papers/litterman_1986_bvar.pdf"
+  notes: >
+    The replication uses FRED-QD proxies over 1959Q1-2019Q4: real GDP
+    growth, GDP-deflator inflation, UNRATE, nominal M1 (M1REAL x CPI),
+    GPDIC1 investment, the CP3M commercial-paper rate, and diff(BUSINVx) for
+    the change in business inventories (NIPA CBI is not in FRED-QD). The
+    paper's VAR includes a constant (p. 29).
+

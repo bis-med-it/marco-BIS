@@ -1,0 +1,53 @@
+# Paper-target validation for Romer-Romer (2004) replication.
+#
+# RR 2004 (AER) constructed narrative monetary-policy shocks as the
+# residuals from regressing the change in the intended funds rate at
+# FOMC meetings on Greenbook forecasts (eq. 1).
+# The headline: contractionary RR shocks reduce output and prices
+# (textbook MP transmission, but identified narratively rather than
+# via timing restrictions).
+#
+# This replication requires the user-staged RR shock CSV
+# (data/staging/romer_romer_shocks.csv); targets validate when the
+# CSV is in place.
+
+targets:
+  - description: "Number of macro variables (4-var proxy SVAR: indpro, cpi, unrate, ffr)"
+    location: "config.yaml (replication design; the paper's own VAR is 3-variable (log IP, log PPI, cumulated shock), 4 with commodity prices, p. 1079)"
+    paper_value: 4.0
+    paper_units: "count"
+    our_key: "n_vars"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "VAR(12) lag order (replication convention for the monthly proxy-SVAR)"
+    location: "Framework choice; the PAPER's baseline VAR uses 36 lags (p. 1079); fn 27, p. 1080 shows 12 lags UNDERSTATE the effects (output peak -1.5% vs -2.9%)"
+    paper_value: 12.0
+    paper_units: "count"
+    our_key: "n_lags"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "VAR is stable (max|eig| < 1)"
+    location: "Framework sanity check (not reported in the paper)"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "stable"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "First-stage F: regression check against an earlier-run F value (not an F > 5 threshold test)"
+    location: "Framework diagnostic; the PAPER contains no proxy-SVAR and reports no first-stage F; the 10-handle is the later weak-IV literature's heuristic"
+    paper_value: 10.0
+    paper_units: "F-stat"
+    our_key: "first_stage_F"
+    tolerance: 15.0
+    tolerance_kind: "absolute"
+
+  - description: "Policy variable (FFR) peak response > 0 (mechanical under the unit_policy normalization)"
+    location: "Structural check: unit_policy normalization sets the FFR impact to +1, so the peak is positive by construction; consistent with fn 19, p. 1072 (funds rate rises more than one-for-one for the first few months). Figure 9 top panel (p. 1079) shows the cumulated RR shock, not the funds rate"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "policy_var_peak_positive"
+    tolerance: 0.0
+    tolerance_kind: "absolute"

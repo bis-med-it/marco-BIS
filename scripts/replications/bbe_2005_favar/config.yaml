@@ -1,0 +1,74 @@
+# Replication config for Bernanke-Boivin-Eliasz (2005) FAVAR.
+# Mirrors the dictionary entry at:
+#   skills/model-dictionary/entries/bbe_2005_favar.yaml
+
+replication:
+  id: "bbe_2005_favar"
+  title: "BBE (2005) FAVAR, US monthly"
+  subtitle: "FAVAR with 3 factors extracted from FRED-MD; FFR as policy variable"
+
+# --- Data ---
+data:
+  source: "fred_md"
+  file: "data/fred_md/dataset.csv"
+  sample_start: "1965-01-01"
+  sample_end: "2001-08-31"
+
+  # Policy variable
+  policy:
+    code: "FEDFUNDS"
+    transform: "level"
+    name: "FEDFUNDS"
+
+  # Slow block (FRED-MD codes; real activity, prices, employment)
+  # BBE 2005 use these "slow" variables for the slow/fast rotation
+  slow_block:
+    - "INDPRO"      # industrial production
+    - "PAYEMS"      # payroll employment
+    - "UNRATE"      # unemployment rate (BBE include level)
+    - "CPIAUCSL"    # CPI all items
+    - "CPIULFSL"    # CPI less food
+    - "PCEPI"       # PCE price index
+    - "DPCERA3M086SBEA"   # real personal consumption
+    - "RPI"         # real personal income
+    - "CES0600000008"  # wages
+
+  # Information panel: a hand-picked FRED-MD subset including financial
+  # variables (BBE use about 120 series).
+  info_panel:
+    - {code: "INDPRO",      transform: "log"}
+    - {code: "PAYEMS",      transform: "log"}
+    - {code: "UNRATE",      transform: "level"}
+    - {code: "CPIAUCSL",    transform: "log"}
+    - {code: "CPIULFSL",    transform: "log"}
+    - {code: "PCEPI",       transform: "log"}
+    - {code: "DPCERA3M086SBEA", transform: "log"}
+    - {code: "RPI",         transform: "log"}
+    - {code: "CES0600000008", transform: "log"}
+    - {code: "GS1",         transform: "level"}
+    - {code: "GS10",        transform: "level"}
+    - {code: "TB3MS",       transform: "level"}
+    - {code: "M1SL",        transform: "log"}
+    - {code: "M2SL",        transform: "log"}
+    - {code: "BAA",         transform: "level"}
+    - {code: "AAA",         transform: "level"}
+    - {code: "HOUST",       transform: "log"}
+    - {code: "EXUSUKx",     transform: "log"}
+    - {code: "S&P 500",     transform: "log"}
+
+# --- Model ---
+model:
+  class: "favar"
+  n_factors: 3
+  lags: 13
+
+# --- IRF ---
+irf:
+  horizon: 48
+  bands: "parameter_draws"
+  n_draws: 1000
+  credible_intervals: [0.68, 0.90]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

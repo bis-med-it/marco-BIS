@@ -1,0 +1,141 @@
+id: "kilian_2009_oil_svar"
+citation:
+  authors: "Kilian"
+  year: 2009
+  title: "Not All Oil Price Shocks Are Alike: Disentangling Demand and Supply Shocks in the Crude Oil Market"
+  journal: "American Economic Review"
+  volume: "99"
+  issue: "3"
+  pages: "1053-1069"
+
+research_questions:
+  - "decomposing real oil price movements into supply vs demand shocks"
+  - "do oil supply disruptions or oil demand drive the real price of oil"
+  - "the macroeconomic effects of different (supply vs precautionary-demand) oil shocks"
+  - "structural identification of the global crude oil market in a VAR"
+  - "why 'not all oil price shocks are alike'"
+tags:
+  - oil
+  - commodity_prices
+  - energy
+  - recursive_svar
+  - cholesky
+  - structural_var
+  - global_oil_market
+  - us_macro
+  - canonical
+  - identification
+
+model:
+  class: "structural_var"
+  prior: null                       # classical recursive SVAR (OLS VAR + Cholesky)
+  variables:
+    endogenous:
+      # Kilian's recursive ordering (most exogenous first), z_t = (Δprod, rea, rpo)'
+      # (p. 1058, eq. (1)). Data: data.txt cols 1-3.
+      - {name: "global crude oil production growth", proxy: "log difference of world crude oil production, millions of barrels/day, monthly average (Δprod; p. 1058 fn 4)", transform: "level", role: "oil supply"}
+      - {name: "index of real economic activity", proxy: "Kilian's global real activity index: dry-cargo single-voyage ocean freight rates (Drewry's), equal-weighted growth rates cumulated, deflated by US CPI, linearly detrended, in logs (rea; pp. 1055-56, 1058)", transform: "level", role: "global aggregate demand"}
+      - {name: "real price of oil", proxy: "US refiner acquisition cost of imported crude oil (DOE, from 1974:1), extended backward as in Barsky-Kilian (2002), deflated by US CPI, in logs (rpo; p. 1058 fn 4)", transform: "level", role: "oil-market-specific (precautionary) demand"}
+    exogenous: []
+  lags: 24
+  frequency: "monthly"
+  deterministics: "constant"
+
+identification:
+  method: "cholesky"                # recursive short-run (timing) restrictions
+  ordering: ["oil production growth", "real economic activity", "real price of oil"]
+  rationale: >
+    Recursive identification of the global oil market with three structural
+    shocks (p. 1058, A0^{-1} lower-triangular): (1) an oil SUPPLY shock (flow
+    supply), (2) an AGGREGATE DEMAND shock (global activity), and (3) an
+    OIL-MARKET-SPECIFIC (precautionary) DEMAND shock. The timing restrictions
+    (p. 1059): crude oil production does not respond within the month to
+    oil-demand innovations (a vertical short-run supply curve; producers
+    adjust slowly, fn 6); global real activity responds to oil supply shocks
+    within the month but not contemporaneously to oil-specific demand shocks
+    (a delay of at least a month); the real oil price responds to all three
+    on impact. So the Cholesky factor of Sigma with the ordering above
+    recovers all three shocks.
+  headline_finding: >
+    "Not all oil price shocks are alike." The DYNAMIC effects on the real oil
+    price and the macroeconomy depend on the shock: oil-market-specific
+    (precautionary) demand shocks raise the real price of oil immediately,
+    sharply, and persistently; aggregate-demand shocks raise it with a delay;
+    flow supply disruptions have comparatively small effects. Historical
+    decompositions attribute most real-oil-price variation to demand, not
+    supply.
+
+sample:
+  start: "1973-02"
+  end: "2007-12"
+  notes: >
+    The paper states the sample as 1973:1-2007:12 (p. 1058), the start
+    dictated by the availability of the DOE oil-production data (fn 4);
+    production enters as a log difference, which consumes 1973:1, so the
+    estimation sample is 1973:2-2007:12 (419 obs, exactly the deposited
+    data.txt).
+
+expected_results:
+  oil_specific_demand_shock:
+    real_oil_price: "immediate, large, persistent, highly significant rise with overshooting (pp. 1060, 1062): impact ~+6%, peak ~+8.5% within ~2 months, still elevated (~+5-7%) a year+ out (Fig. 3 p. 1061, bottom-right)"
+    note: "the signature result: precautionary/oil-specific demand is the main driver of sharp oil-price spikes"
+  aggregate_demand_shock:
+    real_oil_price: "large, persistent, significant rise, much of it delayed by about half a year (p. 1062; Fig. 3, middle-right)"
+    real_activity: "very persistent, highly significant rise, declining only after ~14 months (p. 1062)"
+  oil_supply_shock:
+    real_oil_price: "small, transitory, partially significant rise for about eight months, much smaller than the demand shocks (p. 1062; Fig. 3, top-right)"
+  stability: "stable VAR, max |eigenvalue| ≈ 0.99 (near unit root, acceptable for a level oil-price system; our diagnostic, not the paper's)"
+  display_note: >
+    Fig. 3 (p. 1061) shows one-standard-deviation shocks with one- and
+    two-SE recursive-design wild-bootstrap bands (2,000 reps, p. 1060). All
+    shocks are sign-normalized so an innovation tends to RAISE the price of
+    oil (p. 1060), so the supply column is a production DISRUPTION. Oil
+    PRODUCTION is displayed as the CUMULATIVE response (it enters as a
+    growth rate); real activity and the real oil price are level responses.
+
+recommend_when:
+  - "user studies oil-market shocks or the drivers of the real price of oil"
+  - "research question separates oil supply from oil demand (aggregate vs precautionary)"
+  - "user wants a transparent recursive (Cholesky) global oil-market SVAR baseline"
+  - "commodity-macro analysis where oil is central"
+not_recommended_when:
+  - "the user needs the post-2008 / shale-era oil market without re-checking the structure"
+  - "identification by sign restrictions or external instruments is preferred (see alternatives)"
+  - "a broad energy aggregate (oil+gas+coal) or food commodities is the object"
+alternative_approaches:
+  - {id: "uhlig_2005_sign_restrictions", reason: "set-identified alternative when recursive timing restrictions are doubted"}
+  - {id: "gertler_karadi_2015_proxy_svar", reason: "external-instrument identification (proxy SVAR), a different identifying source"}
+
+implementation_notes:
+  replication: "scripts/replications/kilian_2009_oil_svar/"
+  lib_coverage: "lib.fit_var (OLS VAR, 24 lags, constant) -> lib.cholesky_irf (recursive identification). Fully deterministic / point-identified."
+  data: >
+    Kilian's deposited data.txt (3 columns: oil-production growth, real
+    activity, real oil price; 1973m2-2007m12), obtained from the public
+    JCR-Econ (2025) replication repository github.com/richryan/jcre-oil
+    (kilianAER2009replication/data.txt), verified byte-identical (SHA-256)
+    to the data.txt in Kilian's official openICPSR 113299 replication
+    package. The replicate.py fetches it on first run and caches under the
+    replication's data/ folder.
+  related_papers:
+    - "Kilian-Murphy (2014, JAE): sign + elasticity-bound extension of the oil-market SVAR"
+    - "Baumeister-Hamilton (2019, AER): Bayesian SVAR re-examination of oil supply/demand shocks"
+    - "Känzig (2021, AER): oil supply NEWS shocks via OPEC announcements (external instrument)"
+    - "Peersman (2026, CESifo WP 12415): commodity-cost channel of inflation; Känzig instrument as the identifying source (working paper)"
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-07-04"
+  against: >
+    (1) The AER 99(3) published PDF, field-by-field with page references on
+    every field that defines the specification (variables and ordering p. 1058 eq. (1) + the
+    A0^{-1} matrix; timing restrictions p. 1059; sample p. 1058 + fn 4; data
+    definitions fn 4 + pp. 1055-56; Fig. 3 p. 1061; findings pp. 1060-62).
+    (2) The Fig. 3 values obtained from the author's official replication
+    files (openICPSR 113299): our recursive-SVAR
+    reproduction matches all nine Fig. 3 responses to max |Δ| ≈ 8e-12
+    (machine precision; the headline rpo panel to ~2e-12).
+  pdf_location: "papers/kilian_2009_oil_svar.pdf"
+  notes: >
+    Input data are byte-identical (SHA-256) to the openICPSR 113299 deposit;
+    the remaining differences of about 1e-12 are floating-point.

@@ -1,0 +1,96 @@
+# Replication config for Mertens & Ravn (2013) "The Dynamic Effects of
+# Personal and Corporate Income Tax Changes in the United States"
+# (American Economic Review, 103(4), 1212-1247).
+#
+# Seven-variable quarterly SVAR identified via TWO simultaneous external
+# instruments (personal narrative tax shock, corporate narrative tax
+# shock) for two endogenous policy variables (APITR and ACITR, the average
+# personal and corporate income tax rates). Uses the Mertens-Ravn 2013
+# §II algebra implemented in lib.proxy_svar_irf's multi-instrument path,
+# using the library's identity policy-impact block rather than MR's
+# triangular tax-shock decomposition.
+#
+# Data requirement: APITR, ACITR, PITB, CITB are constructed from BEA
+# NIPA tables (not in FRED-QD). The two narrative instruments are from
+# the Mertens-Ravn data archive. The replication consumes a pre-staged
+# CSV at data/staging/mertens_ravn_2013.csv; see README.md for the
+# source and the expected column layout.
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/mertens_ravn_2013_tax_proxy_svar.yaml
+
+replication:
+  id: "mertens_ravn_2013_tax_proxy_svar"
+  title: "Mertens-Ravn (2013) Tax Shocks via Proxy-SVAR"
+  subtitle: "Multi-instrument identification of personal and corporate income tax shocks"
+
+# --- Data: 7 endogenous variables + 2 instruments, all from staging CSV ---
+data:
+  source: "csv_file"
+  staging_path: "data/staging/mertens_ravn_2013.csv"
+  sample_start: "1950-01-01"
+  sample_end: "2006-12-31"
+
+  series:
+    - {name: "apitr",         role: "personal income tax rate (BEA NIPA construction)"}
+    - {name: "acitr",         role: "corporate income tax rate (BEA NIPA construction)"}
+    - {name: "pitb",          role: "log real per-capita personal income tax base (MR ln B^PI)"}
+    - {name: "citb",          role: "log real per-capita corporate income tax base (MR ln B^CI)"}
+    - {name: "log_real_g",    role: "log real FEDERAL govt purchases per capita (NIPA T1.1.3 L22, p. 1245; not total-government GCEC1)"}
+    - {name: "log_real_gdp",  role: "log real GDP per capita"}
+    - {name: "log_real_debt", role: "log real per-capita federal debt HELD BY THE PUBLIC (Favero-Giavazzi DEBTHP, p. 1245; not gross debt, not a ratio)"}
+
+  # Transforms applied at load time: keep variables in the form MR use.
+  # APITR / ACITR stay as levels (rates). The tax bases, government
+  # purchases, GDP and debt are staged already as logs of real per-capita
+  # values (MR's ln B^PI, ln B^CI, ln G, ln GDP, ln DEBT), so they load
+  # unchanged as well.
+  transforms:
+    apitr:        "level"
+    acitr:        "level"
+    pitb:         "level"
+    citb:         "level"
+    log_real_g:   "level"
+    log_real_gdp: "level"
+    log_real_debt: "level"   # staged column is already log real per-capita debt
+
+  variable_order:
+    ["apitr", "acitr", "pitb", "citb", "log_real_g", "log_real_gdp", "log_real_debt"]
+
+# Two narrative instruments, also pre-staged in the same CSV
+instruments:
+  staging_path: "data/staging/mertens_ravn_2013.csv"
+  # Staging contract: in the staged CSV, a NaN instrument cell means "no
+  # narrative tax event in this quarter" (MR's convention: the narrative
+  # shock is zero outside documented events). Setting this flag asserts
+  # that convention for YOUR staged file; without it, missing instrument
+  # cells abort the run rather than being silently zero-filled.
+  nan_means_no_event: true
+  columns: ["personal_shock", "corporate_shock"]
+
+# --- Model: 7-variable VAR(4), quarterly ---
+model:
+  class: "var"
+  lags: 4
+  trend: "c"
+
+# --- Identification: multi-instrument proxy-SVAR (MR 2013 §II) ---
+identification:
+  method: "proxy_svar"
+  policy_variables: ["apitr", "acitr"]
+  normalization: "unit_policy"        # H_1^p = I_2
+
+# --- IRF: bootstrap inference per the paper (wild bootstrap) ---
+irf:
+  horizon: 20                          # quarters; MR plot 0..20
+  bands: "wild_bootstrap"
+  n_draws: 1000
+  shock_names: ["Personal income tax shock", "Corporate income tax shock"]
+
+# --- Horizons to report in the headline table ---
+report:
+  horizons_to_report: [0, 4, 8, 12, 20]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

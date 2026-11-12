@@ -1,0 +1,68 @@
+# Paper-target validation for Hamilton (2018) filter replication.
+#
+# Hamilton 2018 (REStat) criticised the HP filter and proposed a
+# regression-based alternative (regress y_{t+h} on the p most recent
+# values y_t, ..., y_{t-p+1}; the cycle is the residual). Headline:
+# HP induces spurious dynamics / end-of-sample distortions / an
+# indefensible lambda; the regression alternative avoids all three.
+#
+# This replication compares 4 cycle-extraction methods on US log real
+# GDP × 100, 1959-2024 quarterly. Targets pin (a) method coverage and
+# (b) cycle-amplitude orderings observed in this sample.
+
+targets:
+  - description: "Number of cycle-filter methods evaluated"
+    location: "config.yaml: hp, hamilton, beveridge_nelson, kmw_bn_filter"
+    paper_value: 4.0
+    paper_units: "count"
+    our_key: "n_methods"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Sample size in quarters"
+    location: "config.yaml: FRED-QD GDPC1, 1959Q1-2024Q4"
+    paper_value: 264.0
+    paper_units: "count"
+    our_key: "n_obs"
+    tolerance: 6.0
+    tolerance_kind: "absolute"
+
+  - description: "HP cycle std on US GDP (replication output ~1.5%)"
+    location: "Replication-derived regression pin; the paper reports NO HP-cycle SD anywhere (Table 2 has only regression-residual and random-walk columns)"
+    paper_value: 1.51
+    paper_units: "percent of log GDP"
+    our_key: "hp_cycle_std"
+    tolerance: 0.30
+    tolerance_kind: "absolute"
+
+  - description: "Hamilton cycle std on US GDP"
+    location: "Table 2, p. 840: 3.38 (GDP, regression residuals, 1947:1-2016:1); this replication's 1959Q1-2024Q4 FRED-QD sample gives ~3.08, inside the band"
+    paper_value: 3.38
+    paper_units: "percent of log GDP"
+    our_key: "hamilton_cycle_std"
+    tolerance: 0.50
+    tolerance_kind: "absolute"
+
+  - description: "Hamilton cycle std > HP cycle std"
+    location: "Regression baseline for this GDP sample, not a general property of the filters. The paper makes no amplitude comparison with HP."
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "hamilton_amplitude_exceeds_hp"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "BN cycle std is tiny (Beveridge-Nelson assigns variance to trend)"
+    location: "Replication-derived pin; the qualitative tiny-jagged-BN-cycle fact is KMW 2018's motivation, not a number in either paper"
+    paper_value: 0.03
+    paper_units: "percent of log GDP"
+    our_key: "bn_cycle_std"
+    tolerance: 0.05
+    tolerance_kind: "absolute"
+
+  - description: "KMW-BN cycle std > BN cycle std (KMW's delta-bar constraint inflates the BN cycle)"
+    location: "Replication-derived ordering; no paper ratio. KMW 2018: the BN-filter gap is large in amplitude (p. 554) vs the small-amplitude AR(1) BN gap (Fig. 1, p. 551); Fig. 3 bottom panel (p. 555) shows the delta-bar = 0.24 gap swinging more than the AR(12)-MLE BN gap"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "kmw_amplitude_exceeds_bn"
+    tolerance: 0.0
+    tolerance_kind: "absolute"

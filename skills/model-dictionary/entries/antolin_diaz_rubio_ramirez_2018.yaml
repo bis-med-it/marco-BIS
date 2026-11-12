@@ -1,0 +1,121 @@
+id: "antolin_diaz_rubio_ramirez_2018"
+citation:
+  authors: "Antolín-Díaz, Rubio-Ramírez"
+  year: 2018
+  title: "Narrative Sign Restrictions for SVARs"
+  journal: "American Economic Review"
+  volume: "108"
+  pages: "2802-2829"
+
+research_questions:
+  - "sharpening sign restriction identification"
+  - "combining narrative evidence with sign restrictions"
+  - "oil supply shock identification"
+  - "monetary policy shock identification with narrative information"
+tags:
+  - sign_restrictions
+  - narrative
+  - identification
+  - oil_shocks
+  - monetary_policy
+  - us_macro
+
+model:
+  class: "sign_var"
+  prior: null
+  variables:
+    endogenous:
+      - {name: "varies", role: "paper demonstrates with oil market and monetary policy applications"}
+    exogenous: []
+  lags: "varies by application"
+  frequency: "monthly"
+
+identification:
+  method: "narrative_sign_restrictions"
+  restrictions:
+    traditional_sign: "same as Uhlig (2005) or application-specific"
+    narrative_additions:
+      sign_of_shock: >
+        at specific historical dates the sign of a structural shock is known
+        -- e.g., a negative oil supply shock at the start of the Persian Gulf
+        War (Aug 1990), or a positive (contractionary) monetary policy shock at
+        the Oct 1979 Volcker reform. The paper EXCLUDES the Oct
+        1973 OAPEC episode as contested / possibly endogenous (p. 2814-2815).
+      historical_contribution: >
+        restrictions on the historical decomposition (shock contributions) at a
+        date. Two sub-types (p. 2806-2807): Type A -- "most important": the named
+        shock's |contribution| exceeds the LARGEST other shock's
+        (|H_j| > max_{k!=j} |H_k|); "least important": it is below the
+        SMALLEST other shock's (|H_j| < min_{k!=j} |H_k|). Type B --
+        "overwhelming / negligible": it exceeds (or is below) the SUM of
+        all other shocks' |contributions|. The oil app uses
+        Type A; the monetary app uses Type B.
+  rationale: >
+    Pure sign restrictions often produce wide identified sets. Narrative
+    information from known historical events (e.g., the 1990 Gulf War oil
+    disruption, the Oct 1979 Volcker tightening) substantially sharpens
+    identification -- even a single narrative restriction can change the
+    inference (abstract, p. 2802).
+  algorithm: >
+    Importance sampler (Algorithm 1, §III, p. 2811-2813): draw reduced-form
+    parameters (NIW) + a uniform orthogonal rotation via QR; check traditional
+    AND narrative restrictions. Narrative restrictions truncate the
+    LIKELIHOOD (not the prior, unlike traditional sign restrictions), so it
+    does NOT suffice to simply discard violating draws -- accepted draws are
+    reweighted by 1/(probability of satisfying the restriction) and resampled.
+    (The framework's lib implements the simple-rejection form; see
+    the replication notes.)
+
+sample:
+  notes: "Method paper with no single canonical sample; see the paper's two applications."
+
+expected_results:
+  vs_pure_sign_restrictions:
+    acceptance_rate: "lower (more restrictive)"
+    confidence_bands: "substantially narrower"
+    output_response: "more precisely estimated than Uhlig (2005)"
+  notes: >
+    The paper shows that adding a small number of narrative restrictions
+    (5-10 dates) dramatically reduces the identified set. The information
+    gain can be quantified by comparing acceptance rates before and after
+    narrative restrictions.
+
+recommend_when:
+  - "user has narrative evidence about historical shock dates"
+  - "pure sign restrictions produce too-wide bands"
+  - "oil price shock identification"
+  - "user wants to sharpen identification without imposing Cholesky"
+not_recommended_when:
+  - "no historical narrative is available for the economy"
+  - "user is uncomfortable with narrative assumptions"
+  - "very short sample with few identifiable events"
+alternative_approaches:
+  - {id: "uhlig_2005_sign_restrictions", reason: "simpler, without narrative component"}
+  - {id: "cee_1999_monetary_svar", reason: "Cholesky alternative for monetary policy"}
+
+implementation_notes:
+  replication: "scripts/replications/antolin_diaz_rubio_ramirez_2018/"
+  type2_options: >
+    lib.sign_restricted_irf Type-2 (historical-contribution) restrictions accept
+    two ADRR modifiers: criterion = "most_important" (Type A, default) or "overwhelming"
+    (Type B); and contribution = "cumulative" (HD level, default) or "unexpected"
+    (one-period forecast-error contribution B[var,:]*eps[date,:], the object
+    ADRR's canonical examples restrict). The Oct-1979 monetary example is thus
+    {type: largest_positive_contributor, variable: <ffr>, criterion: overwhelming,
+    contribution: unexpected}. Still simple rejection, not the paper's importance
+    sampler.
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-03"
+  against: "original paper (Antolín-Díaz & Rubio-Ramírez 2018, AER 108(10), 2802-2829)"
+  pdf_location: "papers/antolin_diaz_rubio_ramirez_2018.pdf"
+  notes: >
+    The paper has two monthly applications: oil (3-variable Kilian-Murphy
+    style, 24 lags) and monetary (the CEE/Uhlig 6-variable VAR, 12 lags).
+    The replication is a simplified 4-variable monetary method demo with two
+    Type 1 sign-of-shock restrictions and one Type 2 historical-contribution
+    restriction, using simple rejection rather than the paper's importance
+    sampler (the paper explains why discarding violating draws is not
+    enough: narrative restrictions truncate the likelihood, p. 2812).
+

@@ -1,0 +1,82 @@
+# Replication config for Stock-Watson (2018) LP-IV methodology applied with
+# Jarocinski-Karadi (2020) high-frequency monetary surprises as the instrument.
+#
+# Methodology entry:
+#   skills/model-dictionary/entries/stock_watson_2018_lpiv.yaml
+# (The dictionary entry describes the LP-IV approach generically. This
+#  replication picks JK shocks as the specific instrument and FRED-MD
+#  monthly log CPI price levels/IP/FFR as the responses.)
+
+replication:
+  id: "stock_watson_2018_lpiv"
+  title: "LP-IV (Stock-Watson 2018) with Jarocinski-Karadi MP Shocks"
+  subtitle: "External-instrument local projections: price-level and output responses to monetary shocks"
+
+# --- Data ---
+data:
+  source: "fred_md"
+  # Load bound: the estimation sample is capped by the JK instrument
+  # (ends 2024-01), and recent FRED-MD vintages have a ragged edge that
+  # the loader's internal-gap guard rightly refuses.
+  sample_end: "2024-01"
+  series:
+    - {name: "cpi",      fred_code: "CPIAUCSL"}
+    - {name: "core_cpi", fred_code: "CPIULFSL"}
+    - {name: "indpro",   fred_code: "INDPRO"}
+    - {name: "ffr",      fred_code: "FEDFUNDS"}
+    - {name: "gs1",      fred_code: "GS1"}
+
+  transforms:
+    cpi:      "log"
+    core_cpi: "log"
+    indpro:   "log"
+    ffr:      "level"
+    gs1:      "level"
+
+  variable_order: ["cpi", "core_cpi", "indpro", "ffr", "gs1"]
+
+  variable_labels:
+    cpi:      "CPI (Headline)"
+    core_cpi: "CPI Less Food"
+    indpro:   "Industrial Production"
+    ffr:      "Federal Funds Rate"
+    gs1:      "1-Year Treasury"
+
+# --- Instrument --- (fetched via lib.fetch_data with external_archive)
+# Shares dataset_id="jk_shocks" with gertler_karadi_2015_proxy_svar so the
+# cache populated by either replication serves both.
+instrument:
+  # Months the JK file leaves missing (unscheduled/emergency meetings
+  # excluded from the surprise measurement); only these are set to zero.
+  zero_surprise_months: ["2001-09", "2008-01", "2008-10", "2020-03"]
+  source: "jarocinski_karadi_2020"
+  api: "external_archive"
+  dataset_id: "jk_shocks"
+  primary_series: "mp_shock"   # the instrument we actually use
+  series:
+    mp_shock:
+      url: "https://raw.githubusercontent.com/marekjarocinski/jkshocks_update_fed_202401/main/shocks_fed_jk_m.csv"
+      column: "MP_median"
+      date_columns: ["year", "month"]
+    cbi_shock:
+      url: "https://raw.githubusercontent.com/marekjarocinski/jkshocks_update_fed_202401/main/shocks_fed_jk_m.csv"
+      column: "CBI_median"
+      date_columns: ["year", "month"]
+  description: "Median-rotation MP and CBI shocks from the JK decomposition; HF surprises around FOMC meetings"
+
+# --- Model ---
+model:
+  class: "lp_iv"
+  policy_variable: "ffr"
+  response_variables: ["cpi", "core_cpi", "indpro", "ffr"]
+  lags: 4
+  hac_lag_rule: "horizon_plus_one"
+
+# --- IRF ---
+irf:
+  horizon: 48                # months
+  credible_intervals: [0.68, 0.90]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

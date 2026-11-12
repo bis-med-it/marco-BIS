@@ -1,0 +1,119 @@
+id: "cee_1999_monetary_svar"
+citation:
+  authors: "Christiano, Eichenbaum, Evans"
+  year: 1999
+  title: "Monetary Policy Shocks: What Have We Learned and to What End?"
+  journal: "Handbook of Macroeconomics"
+  volume: "1A"
+  pages: "65-148"
+
+research_questions:
+  - "effect of monetary policy on output"
+  - "effect of monetary policy on prices"
+  - "monetary policy transmission mechanism"
+  - "liquidity effect of monetary policy"
+  - "dynamic effects of interest rate shocks"
+tags:
+  - monetary_policy
+  - structural_var
+  - cholesky
+  - us_macro
+  - reserves
+  - canonical
+
+model:
+  class: "structural_var"
+  prior: null
+  variables:
+    # Benchmark list and order per CEE 1999 p. 83 (PDF p. 19), §4.2:
+    #   "Y, P, PCOM, FF, TR, NBR, M"; total reserves BEFORE nonborrowed reserves.
+    endogenous:
+      - {name: "real GDP", proxy: "GDPC1 (FRED)", transform: "log", role: "output"}
+      - {name: "GDP deflator", proxy: "implicit GDP deflator; replication uses GDPCTPI (FRED)", transform: "log", role: "price level"}
+      - name: "commodity prices"
+        proxy: >
+          paper: smoothed change in a sensitive-commodity-price index (a
+          component of the BEA leading-indicators index, p. 83); replication
+          substitutes log PPIACO (FRED)
+        transform: "log (paper: smoothed change)"
+        role: "supply-shock control; resolves the price puzzle"
+      - {name: "Federal funds rate", proxy: "FEDFUNDS (FRED)", transform: "level", role: "policy instrument (St in the FF-policy benchmark)"}
+      - {name: "total reserves", proxy: "TOTRESNS (FRED)", transform: "log", role: "reserves (total)"}
+      - {name: "non-borrowed reserves", proxy: "paper: nonborrowed reserves plus extended credit (p. 83); replication uses NONBORRES (FRED). CAUTION: modern FRED reserves series omit extended credit and are not break-adjusted (1984 Continental Illinois; 1990-92 reserve-requirement changes), which materially distorts pre-1990s reserves-market moments (see data/fred_qd/UPDATE.md)", transform: "log", role: "reserves (liquidity measure)"}
+      - {name: "M1", proxy: "nominal M1; replication reconstructs M1 = M1REAL × CPI (the index FRED deflates M1SL by)", transform: "log", role: "money aggregate (benchmark uses M1; paper also reports an M2 variant, p. 83)"}
+    exogenous: []
+  lags: 4
+  frequency: "quarterly"
+
+identification:
+  method: "cholesky"
+  ordering:
+    - "real GDP"
+    - "GDP deflator"
+    - "commodity prices"
+    - "Federal funds rate"
+    - "total reserves"
+    - "non-borrowed reserves"
+    - "M1"
+  rationale: >
+    Recursiveness assumption (CEE §4.1, p. 78-82): the monetary authority
+    sees the slow block {real GDP, deflator, commodity prices} when setting
+    the policy instrument (FFR), which in turn affects the fast block
+    {reserves, money} within the quarter. Order within each block follows
+    the paper's benchmark list (p. 83): total reserves before nonborrowed
+    reserves. NOTE: by CEE's Proposition 4.1(iii) (p. 82), the
+    monetary-policy-shock IRFs are invariant to the ordering of variables
+    WITHIN the slow and fast blocks, so the total-vs-nonborrowed-reserves
+    order matters for faithfulness to the paper, not for the MP-shock IRFs.
+
+sample:
+  start: "1965Q3"
+  end: "1995Q2"
+  notes: >
+    CEE 1999 benchmark sample (p. 84, PDF p. 20): "quarterly data over the
+    sample period 1965:3-1995:2" = 120 quarters. The VAR(4) loses the first
+    4 to lags (T_eff = 116). Post-Accord; pre-ZLB.
+
+expected_results:
+  monetary_contraction:
+    output: "declines; peak effect at 4-6 quarters; statistically significant"
+    prices: "decline with lag of 3-6 quarters; NO price puzzle"
+    commodity_prices: "ZERO on impact by construction (ordered before FF in the recursive scheme; the paper states Y, P, PCOM do not respond contemporaneously to the policy shock, p. 83); decline thereafter"
+    fed_funds_rate: "increases on impact; persistent for 2-3 quarters"
+    non_borrowed_reserves: "decline on impact"
+    total_reserves: "decline"
+    m1: "declines (the liquidity effect)"
+  notes: >
+    The inclusion of commodity prices is critical for resolving the price
+    puzzle. Without commodity prices, the price response is often positive
+    for several quarters after a contractionary shock.
+
+recommend_when:
+  - "user wants the canonical monetary policy SVAR"
+  - "recursive identification is appropriate for the economy"
+  - "user wants to study monetary policy under a recursive information structure that includes commodity prices"
+  - "US data with sufficient sample (post-1960)"
+  - "user wants to study the liquidity effect"
+not_recommended_when:
+  - "non-borrowed reserves data not available (non-US economies)"
+  - "user studies unconventional monetary policy (ZLB period)"
+  - "open economy where exchange rate matters"
+  - "user prefers non-recursive identification"
+  - "short sample (7 variables × 4 lags = 28 params/equation)"
+alternative_approaches:
+  - {id: "sims_1980_var", reason: "simpler specification without reserves; may have price puzzle"}
+  - {id: "uhlig_2005_sign_restrictions", reason: "agnostic identification without ordering assumptions"}
+  - {id: "jorda_2005_lp", reason: "robust to VAR misspecification; LP-IV with external instrument"}
+
+implementation_notes:
+  replication: "scripts/replications/cee_1999_monetary_svar/"
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-03"
+  against: "original paper (Christiano, Eichenbaum & Evans 1999, Handbook of Macroeconomics 1A, 65-148)"
+  pdf_location: "papers/cee_1999_monetary_svar.pdf"
+  notes: >
+    The paper's VAR is estimated by OLS with a constant and no trend (p. 73,
+    fn 5).
+

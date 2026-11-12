@@ -1,0 +1,69 @@
+# Paper-target validation for Mertens-Ravn (2013) replication.
+#
+# MR 2013 (AER) developed proxy SVAR identification with k narrative
+# proxies for k structural shocks in an n-var VAR (k ≤ n). With k = 2 the
+# proxy covariance restrictions identify beta_1 S_1^{-1} and S_1 S_1' but
+# not S_1 itself (pp. 1216, 1224-25); MR separate the personal and
+# corporate tax shocks by a Cholesky ordering of the two tax rates.
+# Headline: cuts in either tax rate raise output in the short run.
+#
+# This replication requires a user-staged CSV (data/staging/mertens_ravn_*.csv)
+# from the AER replication archive; targets are written for the day the
+# staging file is in place.
+
+targets:
+  - description: "Number of endogenous variables (MR 7-var system)"
+    location: "MR 2013 §II.C, p. 1225: APITR, ACITR, PITB, CITB, gov_spend, gdp, debt"
+    paper_value: 7.0
+    paper_units: "count"
+    our_key: "n_vars"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of instruments (2 tax narrative shocks)"
+    location: "MR 2013 §II.A-B, pp. 1220-1224: two narrative proxies m_t (personal = II+EM, corporate = CI liability changes); PITAX_NAR and CITAX_NAR are the replication-archive column names"
+    paper_value: 2.0
+    paper_units: "count"
+    our_key: "n_instruments"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of policy variables (matches number of instruments)"
+    location: "Structural identity: k = 2 proxies for k = 2 tax rates (APITR, ACITR)"
+    paper_value: 2.0
+    paper_units: "count"
+    our_key: "n_policy_vars"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "VAR(4) lag order (MR convention)"
+    location: "MR 2013 §II.C, p. 1225: lag length set to four by the AIC"
+    paper_value: 4.0
+    paper_units: "count"
+    our_key: "n_lags"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "VAR is stable (max|eig| < 1)"
+    location: "Framework sanity check (not reported in the paper)"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "stable"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Σ_p (2x2 instrument-policy covariance) is invertible (condition number bounded)"
+    location: "Framework check of a necessary condition: MR 2013 §I.A, eq. (7), p. 1216 requires the k x k matrix Σ_{mu1'} (Σ_p here) to be invertible"
+    paper_value: 1.0
+    paper_units: "indicator (condition number < 1e6)"
+    our_key: "sigma_p_invertible"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "First-stage F for personal tax instrument: regression check against an earlier-run F value (not an F > 5 threshold test)"
+    location: "Framework diagnostic; the PAPER reports no first-stage F (it reports reliability eigenvalues 0.30/0.69 and R2 0.22/0.38, Table 1 p. 1229, discussed p. 1228; no k=2 F exists per the 2019 reply); we report per-pair F"
+    paper_value: 10.0
+    paper_units: "F-stat"
+    our_key: "personal_F"
+    tolerance: 15.0
+    tolerance_kind: "absolute"

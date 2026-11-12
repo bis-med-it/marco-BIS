@@ -1,0 +1,87 @@
+# Replication config for Giannone-Lenza-Primiceri (2015) hyperparameter selection.
+#
+# METHOD DEMONSTRATION: applies GLP's closed-form MDD optimisation to the CEE
+# 1999 7-var BVAR (4 lags, log-levels, 1965-1995). This DIVERGES on purpose
+# from GLP's own spec (small/medium/large systems in annualized log levels x4,
+# 5 lags, 1959-2008, Gamma hyperpriors); see README "Relationship to GLP's
+# paper". The paper-faithful spec is recorded in the dictionary entry.
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/glp_2015_prior_selection.yaml
+
+replication:
+  id: "glp_2015_prior_selection"
+  title: "GLP (2015) Optimal Minnesota Hyperparameters"
+  subtitle: "MDD-maximising lambda_1 on the CEE 1999 BVAR specification"
+
+# --- Data --- (CEE 1999 variables; the sample and reserves order differ from the CEE replication)
+data:
+  source: "fred_qd"
+  sample_start: "1965-01-01"
+  sample_end: "1995-12-31"
+
+  series:
+    - {name: "m1_real",     fred_code: "M1REAL"}
+    # CPI reverses M1REAL's own deflation (FRED: M1SL / CPIAUCSL); the GDP
+    # deflator stays a model variable and must not be used for this step.
+    - {name: "cpi_for_m1",  fred_code: "CPIAUCSL"}
+    - {name: "rgdp",        fred_code: "GDPC1"}
+    - {name: "deflator",    fred_code: "GDPCTPI"}
+    - {name: "commodity",   fred_code: "PPIACO"}
+    - {name: "ffr",         fred_code: "FEDFUNDS"}
+    - {name: "nbreserves",  fred_code: "NONBORRES"}
+    - {name: "totreserves", fred_code: "TOTRESNS"}
+
+  preprocess:
+    - {operation: "nominalise", real: "m1_real", deflator: "cpi_for_m1", output: "m1"}
+
+  transforms:
+    rgdp:        "log"
+    deflator:    "log"
+    commodity:   "log"
+    ffr:         "level"
+    nbreserves:  "log"
+    totreserves: "log"
+    m1:          "log"
+
+  variable_order: ["rgdp", "deflator", "commodity", "ffr", "nbreserves", "totreserves", "m1"]
+
+# --- Model ---
+model:
+  class: "bvar"
+  lags: 4
+  trend: "c"
+  initial_prior:
+    lambda_1: 0.1
+    lambda_2: 0.5
+    lambda_3: 1.0
+    lambda_4: 100.0
+    mu: 1.0
+    delta: 1.0
+
+# --- GLP optimisation ---
+# GLP 2015 optimize the natural-conjugate MDD over (lambda_1, mu, delta):
+# overall tightness, sum-of-coefficients, and dummy-initial-observation.
+# lambda_2 (cross-variable tightness, Litterman 1986) is not in their
+# framework, since it requires an asymmetric prior, which gives up the closed-form
+# MDD. Hence it is excluded from params_to_optimize here.
+glp:
+  params_to_optimize: ["lambda_1", "mu", "delta"]
+  method: "Nelder-Mead"
+
+# --- Out-of-sample forecast evaluation ---
+# Tests the GLP framework's implicit empirical claim: hyperparameters that
+# maximise the (in-sample) marginal data density should also yield better
+# out-of-sample forecasts. Compares rolling-window forecasts from the
+# default Minnesota prior vs the GLP-optimal prior on the same data.
+forecast_evaluation:
+  window_size: 60               # 15 years quarterly
+  horizon: 12                   # 1-12 quarters ahead
+  step: 1                       # consecutive quarterly origins; the DM
+                                # truncation/HLN correction assumes origin
+                                # spacing equals the loss array's period
+  horizons_to_report: [1, 4, 8, 12]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42

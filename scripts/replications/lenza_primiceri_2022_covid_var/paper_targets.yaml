@@ -1,0 +1,63 @@
+# Paper-target validation for Lenza-Primiceri (2022) COVID-VAR replication.
+#
+# LP 2022 (JAE) proposed scaling individual observations by a time-varying
+# standard deviation s_t to handle COVID outliers without dropping them.
+# Paper headline (Sec. 3.1, pp. 692-693): with the s_t scaling, impulse
+# responses are very similar to those of a VAR estimated on pre-pandemic
+# data, while treating the COVID observations as conventional data distorts
+# them. The paper uses a monthly 7-variable VAR (13 lags, 1988:12-2021:5,
+# p. 691) and reports no individual coefficient estimates.
+#
+# This replication is a quarterly 4-variable demo and tracks the urate
+# own-lag-1 coefficient instead. The values 0.56 / 1.10 / 1.14 below are
+# this run's values (replication regression pins), not paper values. Avg
+# |LP - drop| should be much smaller than |naive - drop|.
+
+targets:
+  - description: "Naive urate own-lag-1 (DISTORTED by 2020Q2; should be far from 1.0)"
+    location: "Replication-derived (quarterly 4-variable demo; the paper reports no coefficients). Paper, qualitative: naive impulse responses are very different from the baseline, Sec. 3.1, p. 693"
+    paper_value: 0.56
+    paper_units: "coefficient"
+    our_key: "naive_urate_lag1"
+    tolerance: 0.20
+    tolerance_kind: "absolute"
+
+  - description: "Drop-COVID urate own-lag-1 (~1.1, near unit root recovered)"
+    location: "Replication-derived (quarterly 4-variable demo; the paper reports no coefficients). The paper's drop comparator excludes all post-February 2020 data and gives impulse responses relatively similar to the baseline, Sec. 3.1, p. 693"
+    paper_value: 1.10
+    paper_units: "coefficient"
+    our_key: "drop_urate_lag1"
+    tolerance: 0.10
+    tolerance_kind: "absolute"
+
+  - description: "LP-scaled urate own-lag-1 (~ drop's value; LP recovers without dropping)"
+    location: "Replication-derived (quarterly 4-variable demo; the paper reports no coefficients). Paper analogue: scaled-VAR impulse responses close to the pre-pandemic-sample ones, Sec. 3.1, Fig. 2, p. 693; also p. 689"
+    paper_value: 1.14
+    paper_units: "coefficient"
+    our_key: "lp_urate_lag1"
+    tolerance: 0.10
+    tolerance_kind: "absolute"
+
+  - description: "Avg |LP-scaled - drop| <= 1/4 × avg |naive - drop| (LP works ≥ 4× better than naive)"
+    location: "Own threshold (1/4) on this run's coefficients, not a paper value; qualitative claim from Sec. 3.1, p. 693"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "lp_close_to_drop_compared_to_naive"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of COVID observations dropped under 'drop' setup"
+    location: "replicate.py drop mask: 2020Q2 and 2020Q3 (the paper drops all observations after February 2020)"
+    paper_value: 2.0
+    paper_units: "count"
+    our_key: "n_dropped"
+    tolerance: 2.0
+    tolerance_kind: "absolute"
+
+  - description: "All three setups produce stable BVAR (max|eig| < 1)"
+    location: "Own stability diagnostic, not a paper value"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "all_stable"
+    tolerance: 0.0
+    tolerance_kind: "absolute"

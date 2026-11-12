@@ -1,0 +1,70 @@
+# Paper-target validation for Christiano-Eichenbaum-Evans (1999) replication.
+#
+# CEE (1999, Handbook of Macroeconomics 1A, 65-148) is the workhorse
+# monetary-VAR replication. Seven-variable quarterly OLS VAR(4),
+# Cholesky-identified monetary policy shock (FFR ordered 4th). Headline
+# finding: a contractionary monetary policy shock produces a hump-shaped
+# contraction in real output, with the deflator response *eventually*
+# negative (the "price puzzle" is resolved by including commodity prices
+# in the system).
+#
+# Targets pin (a) the paper's spec and headline directional claims,
+# (b) our earlier-run numerical outputs as regression baselines, and
+# (c) our own stability and sign-convention checks (not paper values).
+
+targets:
+  - description: "Sample size (quarterly observations 1965Q3-1995Q2)"
+    location: "CEE 1999 p. 84: 'quarterly data over the sample period 1965:3-1995:2' = 120 obs"
+    paper_value: 120.0
+    paper_units: "count"
+    our_key: "n_obs"
+    tolerance: 1.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of endogenous variables"
+    location: "CEE 1999 p. 83: Y, P, PCOM, FF, TR, NBR, M (= rgdp, deflator, commodity, ffr, totreserves, nbreserves, m1)"
+    paper_value: 7.0
+    paper_units: "count"
+    our_key: "n_vars"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "VAR lag order"
+    location: "CEE 1999 p. 83: four lagged values"
+    paper_value: 4.0
+    paper_units: "count"
+    our_key: "n_lags"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Max |eigenvalue| of companion matrix (near unit root acceptable)"
+    location: "Our stability diagnostic (the paper reports no companion eigenvalues); near-unit root expected for log-level data"
+    paper_value: 1.0
+    paper_units: "modulus"
+    our_key: "max_eig_modulus"
+    tolerance: 0.05
+    tolerance_kind: "absolute"
+
+  - description: "FFR own-shock impact (h=0; Cholesky positive diagonal)"
+    location: "Cholesky lower-triangular convention"
+    paper_value: 1.0
+    paper_units: "indicator (1.0 = positive)"
+    our_key: "ffr_own_impact_positive"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Real GDP response to FFR shock at h=12 (negative; CEE headline: contractionary MP contracts output)"
+    location: "CEE 1999 Fig. 2, p. 86 (GDP response to FF shock); value is our earlier-run regression baseline on the 1965Q3-1995Q2 sample"
+    paper_value: -0.0029
+    paper_units: "log-units (log real GDP)"
+    our_key: "rgdp_to_ffr_h12"
+    tolerance: 0.003
+    tolerance_kind: "absolute"
+
+  - description: "Real GDP trough response < 0 in the 4-16Q window (contraction)"
+    location: "CEE 1999 Section 4.2.2.1, p. 87: 'after a delay of 2 quarters, there is a sustained decline in real GDP'"
+    paper_value: 1.0
+    paper_units: "indicator (1.0 = negative trough exists)"
+    our_key: "rgdp_contracts_in_window"
+    tolerance: 0.0
+    tolerance_kind: "absolute"

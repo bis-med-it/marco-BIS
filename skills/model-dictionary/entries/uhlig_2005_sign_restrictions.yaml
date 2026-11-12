@@ -1,0 +1,133 @@
+id: "uhlig_2005_sign_restrictions"
+citation:
+  authors: "Uhlig"
+  year: 2005
+  title: "What Are the Effects of Monetary Policy on Output? Results from an Agnostic Identification Procedure"
+  journal: "Journal of Monetary Economics"
+  volume: "52"
+  pages: "381-419"
+
+research_questions:
+  - "effect of monetary policy on output"
+  - "agnostic identification of monetary shocks"
+  - "sign restriction identification"
+  - "does monetary policy affect output"
+tags:
+  - monetary_policy
+  - sign_restrictions
+  - agnostic
+  - us_macro
+  - identification
+  - foundational
+
+model:
+  class: "sign_var"
+  prior: "diffuse_normal_wishart"
+  # Paper uses a Bayesian VAR with diffuse Normal-Wishart prior (Section 2,
+  # p. 389; Appendix B, p. 410: "weak prior, and N₀=0, ν₀=0"). In practice
+  # equivalent to OLS posterior given the diffuse hyperparameters. The
+  # canonical replication draws (B, Sigma) from the framework's recentred
+  # asymptotic sampler (inverse-Wishart with df = T-k, centred on the OLS
+  # covariance), together with random rotations, not from the paper's
+  # posterior (df = T). Before sign filtering its covariance draws are
+  # centred about 17% higher than the paper's posterior mean; the effect on
+  # the accepted IRFs has not been isolated.
+  variables:
+    endogenous:
+      - {name: "real GDP", transform: "log", role: "output",
+         paper_source: "Bernanke-Mihov dataset; monthly via Moench-Uhlig (2004) interpolation using INDPRO",
+         replication_substitution: "raw INDPRO (interpolation method not re-implemented)"}
+      - {name: "GDP deflator", transform: "log", role: "price level",
+         paper_source: "Bernanke-Mihov dataset; monthly via Moench-Uhlig (2004) interpolation using CPI and PPI",
+         replication_substitution: "raw CPIAUCSL (CPI; interpolation method not re-implemented)"}
+      - {name: "commodity price index", transform: "log", role: "commodity prices",
+         paper_source: "Dow Jones Spot Average (_DJSD) from Global Financial Data (proprietary)",
+         replication_substitution: "WPSID62 (FRED PPI: crude materials), a raw-commodity index and the nearest public proxy for the Dow Jones Spot Average."}
+      - {name: "Federal funds rate", transform: "level", role: "policy instrument"}
+      - {name: "non-borrowed reserves", transform: "log", role: "reserves"}
+      - {name: "total reserves", transform: "log", role: "reserves (control)"}
+    exogenous: []
+  lags: 12
+  frequency: "monthly"
+  deterministics: "none"
+  # Paper p. 392 verbatim: "I have fitted a VAR with 12 lags in levels of
+  # the logs of the series except for using the federal funds rate
+  # directly. I did not include a constant or a time trend."
+
+identification:
+  method: "sign_restrictions"
+  algorithm: "pure_sign_restriction"
+  # Paper Section 2, p. 391: "The pure-sign-restriction approach is cleaner
+  # for my task at hand... Therefore, I focus on it in the main body of the
+  # paper." The headline figures (Fig. 6, 7, 8) are pure-sign-restriction
+  # with K=5. The penalty-function approach appears in Appendix B.2 and
+  # Section B.3 (Fig. 14) as an alternative producing sharper bands at the
+  # cost of additional implicit restrictions.
+  restrictions:
+    monetary_policy_shock:
+      - {variable: "Federal funds rate", sign: "positive", horizons: [0,1,2,3,4,5]}
+      - {variable: "non-borrowed reserves", sign: "negative", horizons: [0,1,2,3,4,5]}
+      - {variable: "GDP deflator", sign: "negative", horizons: [0,1,2,3,4,5]}
+      - {variable: "commodity price index", sign: "negative", horizons: [0,1,2,3,4,5]}
+    output_response: "left unrestricted, the paper's key contribution"
+    total_reserves_response: "left unrestricted (control variable)"
+  rationale: >
+    The paper leaves the output response unrestricted to ask:
+    does the data tell us whether monetary policy affects output, without
+    imposing that it should? This is the "agnostic" identification.
+    Restriction horizon K=5 means the 6 inclusive periods k=0..5 (impact
+    plus 5 months following).
+
+sample:
+  start: "1965M1"
+  end: "2003M12"
+  data_source: "Bernanke-Mihov (1998a,b) dataset, recalculated and extended through December 2003"
+  notes: >
+    Paper Section 3, p. 392: monthly data 1965-01 to 2003-12.
+    Bernanke-Mihov data set was originally 1965-01 to 1996-12; Uhlig
+    extends through end-2003 for the published paper. Paper also tests
+    sub-samples for robustness.
+
+expected_results:
+  monetary_contraction:
+    output: "ambiguous: the paper's controversial finding is that the output response is not robustly negative under sign restrictions alone"
+    prices: "negative by construction (imposed)"
+    fed_funds_rate: "positive by construction (imposed)"
+  variance_decomposition:
+    real_gdp: "monetary policy shocks account for probably less than 25% of real-output forecast-error variance; 'may easily account for less than 2%' (intro, p. 384); the conclusion states 'less than 3%' (p. 406)"
+    notes: "intro p. 384 (2% figure); conclusion p. 406 (3% figure)"
+  notes: >
+    The key finding is controversial: under purely sign-restricted
+    identification, the output effect of monetary policy is not clearly
+    negative: "With a 2/3 probability, the impulse response for real GDP is
+    within a ±0.2% interval around zero at any point during the first 5
+    years following the shock" (p. 396). This contrasts with
+    Cholesky-identified results (CEE 1999). The debate is about whether
+    sign restrictions are too agnostic. Kilian and Murphy (2012) and
+    Baumeister and Hamilton (2015) discuss limitations of pure sign
+    restrictions.
+
+recommend_when:
+  - "user wants theory-consistent identification without recursive ordering"
+  - "user wants to test robustness of Cholesky-identified results"
+  - "user is agnostic about the output effect of a shock"
+  - "multiple shocks need identification simultaneously"
+not_recommended_when:
+  - "user wants a definitive answer on the sign of the output response"
+  - "very small sample (sign restrictions require many rotations)"
+  - "user wants point-identified results (sign restrictions give sets)"
+alternative_approaches:
+  - {id: "cee_1999_monetary_svar", reason: "Cholesky gives point identification but requires ordering"}
+  - {id: "antolin_diaz_rubio_ramirez_2018", reason: "narrative sign restrictions sharpen identification"}
+
+implementation_notes:
+  replication: "scripts/replications/uhlig_2005_sign_restrictions/"
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-02"
+  against: "original paper (Uhlig 2005, JME 52(2), 381-419)"
+  pdf_location: "papers/uhlig_2005_sign_restrictions.pdf"
+  notes: >
+    The replication's commodity proxy is WPSID62 (PPI crude materials);
+    replication figures use percent (100*log) units, as in the paper.

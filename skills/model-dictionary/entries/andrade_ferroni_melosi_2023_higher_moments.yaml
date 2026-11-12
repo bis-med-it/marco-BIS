@@ -1,0 +1,173 @@
+id: "andrade_ferroni_melosi_2023_higher_moments"
+citation:
+  authors: "Andrade, Ferroni, Melosi"
+  year: 2023
+  title: "Identification Using Higher-Order Moments Restrictions"
+  journal: "Federal Reserve Bank of Chicago Working Paper Series"
+  number: "WP 2023-28"
+  ssrn: "4545374"
+  notes: "Working paper (Chicago Fed WP 2023-28); revised in 2025 as 'Higher-order moment inequality restrictions for SVARs' (Boston Fed WP 25-3)."
+
+research_questions:
+  - "sharpening sign-restricted SVAR identification using higher moments"
+  - "structural identification when sign restrictions alone are too loose"
+  - "data-driven discrimination among admissible rotations in set-identified SVARs"
+  - "exploiting non-Gaussianity (skewness, kurtosis) of structural shocks"
+  - "combining theoretical sign priors with empirical higher-moment evidence"
+tags:
+  - structural_identification
+  - higher_moments
+  - non_gaussian
+  - sign_restrictions
+  - bayesian_svar
+  - monetary_policy
+  - sovereign_spreads
+  - identification
+
+model:
+  class: "structural_var"
+  prior: "flat / uninformative; robust Bayesian a la Petrova (2022): QML asymptotics without distributional assumptions, Sigma draws via a fourth-moment shrinkage estimator (eq. 3, App. A.5); informative priors only as an A.5.1 extension."
+  variables:
+    endogenous:
+      # The paper's two applications:
+      # (1) US monetary policy on the UHLIG (2005) DATASET (p. 27)
+      # (2) Euro-area sovereign spread shocks (8 variables, p. 31)
+      application_1_us_monetary:
+        - {name: "real GDP", role: "real activity (Uhlig 2005 dataset)"}
+        - {name: "GDP deflator", role: "prices"}
+        - {name: "commodity price index", role: "commodity prices"}
+        - {name: "federal funds rate", role: "policy rate; the identified shock is a MONETARY POLICY shock, and output is left UNRESTRICTED"}
+      application_2_eurozone_spreads:
+        - {name: "industrial production (EA)", role: "real activity"}
+        - {name: "core HICP", role: "prices"}
+        - {name: "unemployment rate", role: "labour market"}
+        - {name: "NFC borrowing costs (Gilchrist-Mojon 2017, the paper's 'EBP')", role: "credit conditions"}
+        - {name: "1-year Euribor", role: "money-market rate"}
+        - {name: "5-year Italy-Germany spread", role: "the sign-restricted spread variable"}
+        - {name: "10-year Italian yield", role: "sovereign yields (restricted up)"}
+        - {name: "10-year German yield", role: "safe yields (unrestricted; falls, a flight to quality)"}
+    exogenous: []
+  lags: "12 (US application, p. 27) / 6 (EA application, p. 31)"
+  frequency: "monthly"
+
+identification:
+  method: "sign_restrictions_plus_higher_moments"
+  framework: "Andrade-Ferroni-Melosi (2023)"
+  rationale: >
+    Sign-restricted SVARs (Uhlig 2005, Rubio-Ramírez-Waggoner-Zha 2010)
+    typically deliver SET identification. Many rotations satisfy the
+    sign restrictions, and the impulse-response sets can be wide.
+    AFM shrink this set by adding INEQUALITY restrictions on
+    higher-order moments OF THE SHOCK OF INTEREST. These are own-shock
+    thresholds, not cross-shock comparisons (Prop. 1, pp. 9-10 frames
+    them as necessary conditions):
+      - US: the MP shock's ROBUST excess kurtosis > 1.2, calibrated
+        below the minimum (1.4) across the Table-1 menu of US
+        monetary-surprise proxies (p. 29);
+      - EA: the spread shock's sample skewness > 1 AND sample excess
+        kurtosis > 3 (p. 31).
+    Moments are measured with ROBUST percentile-based estimators
+    (eq. 1, p. 10; App. A.4: Moors/Hogg/Crow-Siddiqui kurtosis,
+    Bowley/Groeneveld-Meeden/Kendall-Stuart skewness), the paper's
+    answer to outlier-sensitive sample moments in short samples. The
+    result remains SET-identification, shrunk ("as opposed to the
+    system point identification", p. 5); a spectral-decomposition
+    point-ID variant of third/fourth moments exists but is fragile in
+    short samples (Sec. 3.2 Monte Carlo) and is explicitly not
+    preferred.
+  algorithm: >
+    1. Estimate the reduced-form VAR with FLAT priors via Petrova's
+       (2022) robust Bayesian procedure (QML asymptotics; Sigma draws
+       use a fourth-moment shrinkage estimator, eq. 3).
+    2. Draw reduced-form parameters from that posterior.
+    3. For each draw, generate candidate rotations Q with
+       Rubio-Ramirez-Waggoner-Zha (2010) Haar draws.
+    4. Keep rotations satisfying BOTH (i) the sign restrictions (US:
+       FFR up, deflator and commodity prices down, at impact + 6
+       months; output unrestricted) AND (ii) the own-shock
+       higher-moment threshold(s) on the implied structural shock
+       (US: robust excess kurtosis > 1.2; EA: skewness > 1 and excess
+       kurtosis > 3), computed with the robust percentile estimators.
+    5. Report the identified-set IRF bands over accepted rotations.
+  what_it_does_for_id: >
+    - Can narrow the admissible identified set compared with sign
+      restrictions only (p. 6); posterior intervals need not narrow (the
+      replication's bands widen).
+    - Can help distinguish candidate shocks in sign-restricted SVARs.
+    - If no accepted rotation is found, check feasibility and sampling
+      effort; this is not by itself a test that rejects the model.
+
+sample:
+  start: "1965M1 (US application) / 1999M1 (EA application)"
+  end: "2003M12 (US) / 2019M12 (EA)"
+  notes: >
+    US: the Uhlig (2005) dataset, 1965m1-2003m12 (p. 27); the
+    conclusion frames it as pre-financial-crisis on purpose. EA:
+    1999m1-2019m12 (p. 31). GK 2015 enters the paper only as one of
+    about 20 monetary-surprise proxies in Table 1 (robust kurtosis 11.3).
+
+expected_results:
+  us_monetary_application:
+    identification_sharpening: >
+      QUALITATIVE, not a number: higher-moment restrictions "significantly
+      sharpen identification" (abstract); "almost all the positive responses
+      of output are chopped away" and prices fall about HALF as much as under
+      sign-only (p. 30).
+    direction: "a tightening MP shock consistently REDUCES output (left unrestricted by the signs); resolving the Wolf (2020) masquerading-shocks problem is the economic punchline"
+    higher_moment_restrictions: "own-shock threshold: ROBUST excess kurtosis of the MP shock > 1.2 (motivated by Table 1: the US monetary-surprise proxies are significantly leptokurtic with robust excess kurtosis 1.4-11.3, GK = 11.3, skewness ~ 0; the full table, including EA/UK proxies, spans roughly 1.1-13). Matches this working-paper vintage."
+  eurozone_sovereign_application:
+    restrictions: "spread shock raises the 5y It-De spread, the 10y Italian yield and borrowing costs at impact + 1 month; skewness > 1 AND excess kurtosis > 3 (p. 31)"
+    transmission: >
+      per 1% spread shock: Italian 10y +50bps and German 10y -40bps after a
+      year (flight to quality); borrowing costs rise more than one-to-one; IP
+      contracts (peak within ~6 months); unemployment rises (peak ~18 months);
+      the shock is absorbed in under 3 years; the 1-year Euribor DROPS (policy
+      turns expansionary). Core prices decline slowly and NOT significantly.
+      Sign-only restrictions produce NO statistically significant responses
+      (fn 16).
+  notes: >
+    The headline value-add is methodological: own-shock higher-moment
+    inequality restrictions are necessary conditions that shrink the
+    sign-admissible set, implementable with robust percentile moment
+    estimators and Petrova-style robust Bayes in short monthly samples
+    (T ~ 468 US / ~252 EA). Restrictions are modular and can be combined with
+    narrative, magnitude, zero, or independence restrictions, or
+    imposed directly on observables' forecast errors (pp. 3-5).
+
+recommend_when:
+  - "user starts from a sign-restricted SVAR and has substantive higher-moment restrictions to add"
+  - "user has theoretical priors on the shape (kurtosis, skewness) of structural shocks, not just signs"
+  - "high-frequency identification is unavailable and external instruments are weak"
+  - "user is in Bayesian SVAR framework already (method extends conjugate-prior sign-restriction sampling)"
+  - "user wants to sharpen a sign-identified set using priors on higher moments"
+not_recommended_when:
+  - "user has weak priors on higher-moment shape (the restrictions then add little)"
+  - "shocks are approximately Gaussian (no identifying variation from higher moments)"
+  - "user prefers strict-frequentist methods (LMS 2017 non-Gaussian ML is more natural)"
+  - "external instrument is available (proxy-SVAR is simpler and more direct)"
+alternative_approaches:
+  - {id: "uhlig_2005_sign_restrictions", reason: "baseline without the additional higher-moment assumptions; compare intervals without assuming either is narrower"}
+  - {id: "antolin_diaz_rubio_ramirez_2018", reason: "narrative sign restrictions, a different way to sharpen set identification"}
+  - {id: "lanne_meitz_saikkonen_2017_nongaussian_svar", reason: "frequentist non-Gaussian ML approach (independent components rather than higher-moment inequalities)"}
+  - {id: "gertler_karadi_2015_proxy_svar", reason: "external-instrument identification: comparable target shock, different identifying assumption"}
+
+implementation_notes:
+  replication: "scripts/replications/andrade_ferroni_melosi_2023_higher_moments/"
+  fred_alignment: >
+    The paper's US application needs the Uhlig (2005) dataset (real
+    GDP, deflator, commodity prices, FFR; all FRED-mappable). NB the
+    paper's EA application's "EBP" is the Gilchrist-Mojon (2017)
+    euro-area NFC borrowing-cost series (fn 15), not the US excess bond
+    premium.
+  diagnostic_recommendations: >
+    Always check (i) residual non-Gaussianity (Jarque-Bera): if
+    Gaussian, the higher-moment restrictions add nothing;
+    (ii) sensitivity to which moments are restricted; (iii) compare
+    to sign-only and to proxy-SVAR for triangulation.
+
+verified:
+  status: "checked_against_paper"
+  date: "2026-06-10"
+  against: "FRB Chicago WP 2023-28 PDF (Aug 18, 2023 draft), field-by-field"
+  pdf_location: "papers/andrade_ferroni_melosi_2023_higher_moments.pdf"
+

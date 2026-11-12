@@ -1,0 +1,118 @@
+# Replication config for Andrade, Ferroni, Melosi (2023).
+# Mirrors the dictionary entry at:
+#   skills/model-dictionary/entries/andrade_ferroni_melosi_2023_higher_moments.yaml
+#
+# AFM combine standard sign restrictions with higher-moment inequality
+# restrictions on the structural shock series, shrinking the
+# set-identified rotations admitted by sign-only.
+#
+# Paper Application 1 uses the UHLIG (2005) dataset (real GDP, GDP
+# deflator, commodity prices, FFR; 1965m1-2003m12, VAR(12)) and
+# identifies a MONETARY POLICY shock via signs (FFR up, deflator and
+# pcom down, impact+6m; output unrestricted) + an own-shock threshold:
+# robust excess kurtosis > 1.2. We replicate the METHODOLOGICAL pattern
+# on a FRED-MD-only US monetary VAR: INDPRO / CPIAUCSL / FEDFUNDS /
+# BAAFFM (BAA - FFR credit spread, a financial-conditions stand-in).
+#
+# Identifies three structural shocks simultaneously via multi-shock sign
+# restrictions (RWZ 2010):
+#   * demand_shock:    output up, prices up, monetary tightens
+#   * supply_shock:    output up, prices down
+#   * monetary_shock:  output down, prices down, FFR up, spread widens
+#
+# Two passes compared:
+#   PASS 1: sign restrictions only (baseline)
+#   PASS 2: sign + own-shock higher-moment THRESHOLD (the paper's form)
+#           excess_kurtosis(monetary) >= 1.0 (sample kurtosis here;
+#             the paper uses ROBUST kurtosis > 1.2)
+# Then report the IRF-band-width comparison.
+
+replication:
+  id: "andrade_ferroni_melosi_2023_higher_moments"
+  title: "Andrade, Ferroni, Melosi (2023): Higher-Moment SVAR"
+  subtitle: "Multi-shock sign restrictions + own-shock kurtosis threshold (AFM-style)"
+
+# --- Data ---
+data:
+  source: "fred_md"
+  sample_start: "1965-01-01"
+  sample_end: "2007-12-01"
+
+  series:
+    - {name: "indpro", fred_code: "INDPRO"}
+    - {name: "cpi",    fred_code: "CPIAUCSL"}
+    - {name: "ffr",    fred_code: "FEDFUNDS"}
+    - {name: "spread", fred_code: "BAAFFM"}   # BAA - FFR; EBP-family credit spread
+
+  transforms:
+    indpro: "log"
+    cpi:    "log"
+    ffr:    "level"
+    spread: "level"
+
+  variable_order: ["indpro", "cpi", "ffr", "spread"]
+
+  variable_labels:
+    indpro: "Industrial Production (log)"
+    cpi:    "CPI (log)"
+    ffr:    "Federal Funds Rate (%)"
+    spread: "BAA - FFR Spread (%)"
+
+# --- Model ---
+model:
+  class: "var"
+  lags: 12
+  trend: "c"
+
+# --- Identification ---
+# Multi-shock sign restrictions (RWZ 2010), with optional higher-moment
+# refinements (AFM 2023).
+identification:
+  method: "sign_restrictions_multi_shock"
+  restriction_horizons: 1                    # signs enforced at h=0 only
+
+  sign_restrictions:
+    demand_shock:
+      indpro: +1
+      cpi:    +1
+      ffr:    +1
+      spread: 0
+    supply_shock:
+      indpro: +1
+      cpi:    -1
+      ffr:    0
+      spread: 0
+    monetary_shock:
+      indpro: -1
+      cpi:    -1
+      ffr:    +1
+      spread: +1     # contractionary MP shock widens credit spread
+
+  # AFM (2023) higher-moment restrictions:
+  # MP shocks should have heavier tails than aggregate demand / supply
+  # shocks: concentrated Volcker / FOMC surprises produce rare large
+  # innovations. "Demand" and "supply" are diffuse aggregations of many
+  # underlying shocks (closer-to-Gaussian by CLT).
+  #
+  # lower=1.0 applies to sample kurtosis (the paper uses robust kurtosis
+  # > 1.2). In one run it kept about 17% of sign-passing rotations (500 of
+  # 2,955). Cross-shock kurtosis comparisons are
+  # not used here; see README §"Interpretation and limitations".
+  higher_moment_restrictions:
+    - {shock: "monetary_shock", moment: "excess_kurtosis", lower: 1.0}
+
+# --- IRF ---
+irf:
+  horizon: 48                             # 4 years monthly
+  target_accepted: 500
+  max_rotations: 800000   # sign-only accepts ~0.5% of draws (500 accepts in
+                          # ~100k attempts); the higher-moment pass ~0.09%
+                          # (500 accepts in ~570k attempts).
+
+# --- Report ---
+report:
+  shocks_to_report: ["monetary_shock"]
+  horizons_to_report: [0, 1, 3, 6, 12, 24, 48]
+
+general:
+  random_seed: 42

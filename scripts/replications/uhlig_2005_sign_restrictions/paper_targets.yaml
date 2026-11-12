@@ -1,0 +1,77 @@
+# Paper-target validation for Uhlig (2005) sign-restricted VAR replication.
+#
+# Uhlig 2005 (JME) proposed an "agnostic" sign-restriction identification
+# of monetary policy shocks, building on Faust (1998) and Canova and de
+# Nicolo (2002) (p. 385). Six-variable monthly VAR(12). Headline finding
+# (§3.1, p. 396): with sign restrictions on the GDP deflator, commodity
+# prices, nonborrowed reserves and the FFR for K = 5 months, but none on
+# output, the effect of a contractionary shock on real GDP is ambiguous:
+# with 2/3 probability the response stays within +/-0.2% of zero at any
+# point during the first 5 years. The paper reports 16%-84% bands
+# (p. 394); the 90% band used in the targets below is this replication's
+# choice.
+
+targets:
+  - description: "Sample size (monthly 1965-2003)"
+    location: "Uhlig 2005 §3, p. 392: January 1965 to December 2003 (468 months); replication: 468 monthly observations"
+    paper_value: 468.0
+    paper_units: "count"
+    our_key: "n_obs"
+    tolerance: 6.0
+    tolerance_kind: "absolute"
+
+  - description: "Number of endogenous variables"
+    location: "Uhlig 2005 §3, p. 392: real GDP and GDP deflator (monthly-interpolated), commodity prices, total reserves, nonborrowed reserves, FFR; the replication substitutes indpro and cpi for the interpolated GDP and deflator"
+    paper_value: 6.0
+    paper_units: "count"
+    our_key: "n_vars"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "VAR lag order"
+    location: "Uhlig 2005 §3, p. 392: 12 lags, no constant or time trend"
+    paper_value: 12.0
+    paper_units: "count"
+    our_key: "n_lags"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Max |eigenvalue| regression check (near unit root expected for level data; the band admits mildly explosive roots, so this is not a stability test)"
+    location: "Framework eigenvalue diagnostic (not reported in the paper)"
+    paper_value: 1.0
+    paper_units: "modulus"
+    our_key: "max_eig_modulus"
+    tolerance: 0.05
+    tolerance_kind: "absolute"
+
+  - description: "Acceptance rate sanity (sign restrictions not degenerately tight)"
+    location: "Framework check from acceptance metadata, not a paper number. Rate under the canonical single-sphere measure; the 0.06 pin is from an earlier run, and a later run gives about 3.6%, inside the band"
+    paper_value: 0.06
+    paper_units: "rate (0-1)"
+    our_key: "acceptance_rate"
+    tolerance: 0.04
+    tolerance_kind: "absolute"
+
+  - description: "Number of accepted rotations equals target"
+    location: "config.yaml: target_accepted = 1000"
+    paper_value: 1000.0
+    paper_units: "count"
+    our_key: "n_accepted"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Uhlig headline check: our 90% band on output includes zero somewhere in months 1-24 (ambiguous output effect)"
+    location: "Uhlig 2005 §3.1, p. 396 (Fig. 6): the output effect is 'ambiguous'; the paper's bands are 16%-84% (p. 394), this check uses the replication's 90% band"
+    paper_value: 1.0
+    paper_units: "indicator (1.0 = band includes zero in at least one month; consistent with Uhlig)"
+    our_key: "output_band_includes_zero"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "Uhlig headline: output median peak |response| is SMALL (sub-percent)"
+    location: "Uhlig 2005 §3.1, p. 396: with 2/3 probability the real GDP response is within +/-0.2% over the first 5 years; the 0.5 band here is looser than the paper's"
+    paper_value: 0.0
+    paper_units: "percent (0.0 = near zero; |·| ≤ tolerance). Data is 100*log => percent"
+    our_key: "output_median_peak_abs"
+    tolerance: 0.5
+    tolerance_kind: "absolute"

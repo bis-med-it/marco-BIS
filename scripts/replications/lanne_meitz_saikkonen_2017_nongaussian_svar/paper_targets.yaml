@@ -1,0 +1,89 @@
+# Paper-target validation for Lanne-Meitz-Saikkonen (2017) replication.
+#
+# LMS (2017, JoE) Proposition 1: when the STRUCTURAL shocks are
+# mutually independent and at most one is Gaussian, B is identified up
+# to permutation and SCALING (sign, once shock variances are
+# normalised to one). This replication runs three passes: Cholesky
+# baseline + FastICA (repo substitution consistent with Prop. 1) +
+# pml_t parametric t-ML (~ step 2 of the paper's Sec.-4.5 three-step
+# estimator). NB: this demo uses a DIFFERENT dataset from the paper's
+# own application (4-variable quarterly KCFCI system, T = 74), so every
+# numeric target below is a replication regression pin, not a paper
+# value.
+#
+# Headline checks:
+#   1. Jarque-Bera strongly rejects normality for the recovered shocks,
+#      so weak_nongaussianity = False. This supports the non-Gaussianity
+#      condition only; it does not test mutual independence or validate
+#      identification.
+#   2. FastICA converges to an orthogonal Q in a few iterations.
+#   3. pml_t recovers per-shock degrees-of-freedom ν in (2, 10) on
+#      THIS dataset (the paper's own application gets nu-hat =
+#      9.9/3.1/4.1/15.0, Table 1, p. 297, so (2, 10) is a pin for this
+#      data, not a general expectation).
+#   4. FastICA and pml_t agree to within ~5% relative Frobenius.
+
+targets:
+  - description: "Sample size (576 monthly obs 1960-2007, pre-ZLB)"
+    location: "config.yaml: pre-ZLB sample to keep FFR away from the floor"
+    paper_value: 576.0
+    paper_units: "count"
+    our_key: "n_obs"
+    tolerance: 6.0
+    tolerance_kind: "absolute"
+
+  - description: "Max |eigenvalue| (near unit root with log-level monetary data)"
+    location: "Stability diagnostic"
+    paper_value: 1.0
+    paper_units: "modulus"
+    our_key: "max_eig_modulus"
+    tolerance: 0.05
+    tolerance_kind: "absolute"
+
+  - description: "FastICA converged"
+    location: "Hyvärinen 1999 fixed-point algorithm"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "fastica_converged"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "FastICA converges fast (at most 61 iterations on this dataset; this run: 11)"
+    location: "Symmetric FastICA convergence diagnostic"
+    paper_value: 11.0
+    paper_units: "iterations"
+    our_key: "fastica_n_iter"
+    tolerance: 50.0
+    tolerance_kind: "absolute"
+
+  - description: "weak_nongaussianity = False (the non-Gaussianity diagnostic does not raise the weak-identification flag)"
+    location: "Flag is raised when two or more recovered shocks have JB p-value > 0.10"
+    paper_value: 0.0
+    paper_units: "indicator (0.0 = flag not raised)"
+    our_key: "weak_nongaussianity"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "pml_t converged"
+    location: "L-BFGS-B at max-likelihood point"
+    paper_value: 1.0
+    paper_units: "indicator"
+    our_key: "pml_t_converged"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "pml_t-recovered ν values all in (2, 10); replication pin on this dataset (the paper's own application has nu-hat up to 15.05, Table 1)"
+    location: "Per-shock degrees-of-freedom; replication: (4.85, 2.51, 4.42)"
+    paper_value: 1.0
+    paper_units: "indicator (1.0 = all nu in (2, 10))"
+    our_key: "pml_t_nu_all_heavy_tailed"
+    tolerance: 0.0
+    tolerance_kind: "absolute"
+
+  - description: "FastICA vs pml_t B agree (relative Frobenius within 0.05 of this run's 0.025, i.e. at most 0.075)"
+    location: "Empirical regression baseline for this dataset and implementation (FastICA is a repository substitution, not in LMS 2017; pml_t is close to step 2 of the Sec. 4.5 estimator). Proposition 1 identifies the population model up to permutation, sign and scale; it does not imply finite-sample agreement between FastICA and parametric t-ML"
+    paper_value: 0.025
+    paper_units: "relative Frobenius"
+    our_key: "fastica_vs_pml_t_frobenius"
+    tolerance: 0.05
+    tolerance_kind: "absolute"

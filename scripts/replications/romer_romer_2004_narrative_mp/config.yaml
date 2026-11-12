@@ -1,0 +1,78 @@
+# Replication config for Romer-Romer (2004) narrative monetary policy
+# shock, applied in a proxy-SVAR on a small US macro VAR.
+#
+# IMPORTANT: the RR shock series is NOT on a stable public URL. The user
+# must stage a CSV at the path configured below before running this
+# script. See the README for sources and the expected column layout.
+#
+# Dictionary entry:
+#   skills/model-dictionary/entries/romer_romer_2004_narrative_mp.yaml
+
+replication:
+  id: "romer_romer_2004_narrative_mp"
+  title: "Romer-Romer (2004) Narrative Monetary Shocks"
+  subtitle: "Proxy-SVAR on a 4-variable monthly US macro VAR; RR series as the external instrument"
+
+# --- Macro data (FRED-MD; same pattern as gertler_karadi_2015) ---
+data:
+  source: "fred_md"
+  # Load bounds = the shock series' historical coverage (1969-1996) plus
+  # the forecast horizon.
+  sample_start: "1969-01"
+  sample_end: "1997-12"
+  series:
+    - {name: "indpro", fred_code: "INDPRO"}
+    - {name: "cpi",    fred_code: "CPIAUCSL"}
+    - {name: "unrate", fred_code: "UNRATE"}
+    - {name: "ffr",    fred_code: "FEDFUNDS"}
+
+  transforms:
+    indpro: "log"
+    cpi:    "log"
+    unrate: "level"
+    ffr:    "level"
+
+  variable_order: ["indpro", "cpi", "unrate", "ffr"]
+
+  variable_labels:
+    indpro: "log Industrial Production"
+    cpi:    "log CPI"
+    unrate: "Unemployment Rate"
+    ffr:    "Federal Funds Rate"
+
+# --- Instrument --- (user-staged; see README for sources)
+instrument:
+  source: "romer_romer_2004_narrative"
+  api: "csv_file"
+  dataset_id: "romer_romer_shocks"
+  spec: "data/staging/romer_romer_shocks.csv:rr_shock"
+  description: >
+    Romer-Romer (2004) narrative monetary policy shock, the residual from the
+    Greenbook-purged regression of intended FOMC funds-rate changes. Must
+    be staged as a CSV with a 'date' (first) column and an 'rr_shock'
+    column. Original 1969-1996 series from the AER replication archive
+    (openICPSR 116025); extended series available from Coibion (2012, AEJ),
+    Wieland-Yang (2020, JMCB), and Aruoba-Drechsel (2024). See README.
+
+# --- Model ---
+model:
+  class: "var"
+  lags: 12          # monthly
+  trend: "c"
+
+# --- Identification ---
+identification:
+  method: "proxy_svar"
+  policy_variable: "ffr"
+  normalization: "unit_policy"
+
+# --- IRF ---
+irf:
+  horizon: 48
+  bands: "wild_bootstrap"
+  n_draws: 1000
+  credible_intervals: [0.68, 0.90]
+
+# --- Reproducibility ---
+general:
+  random_seed: 42
